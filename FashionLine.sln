@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33712.159
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Common", "FashionLine\Common.shproj", "{E0E648D7-642F-45AD-93EE-AB0EACFAB1CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[HS2] FashionLine", "[HS2] FashionLine\[HS2] FashionLine.csproj", "{29F940DF-35A6-4C72-96F9-0DE421D48358}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BB0431DE-85C0-4C81-8707-ECFAC5E08C42}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		FashionLine\FashionLine.projitems*{29f940df-35a6-4c72-96f9-0de421d48358}*SharedItemsImports = 4
+		FashionLine\FashionLine.projitems*{e0e648d7-642f-45ad-93ee-ab0eacfab1ce}*SharedItemsImports = 13
+	EndGlobalSection
+EndGlobal
