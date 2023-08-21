@@ -7,6 +7,11 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Common", "FashionLine\Commo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[HS2] FashionLine", "[HS2] FashionLine\[HS2] FashionLine.csproj", "{29F940DF-35A6-4C72-96F9-0DE421D48358}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Master", "Master\Master.csproj", "{8A272414-08C8-415F-A0F3-64F5143A8B9D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{29F940DF-35A6-4C72-96F9-0DE421D48358} = {29F940DF-35A6-4C72-96F9-0DE421D48358}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,6 +22,10 @@ Global
 		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29F940DF-35A6-4C72-96F9-0DE421D48358}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

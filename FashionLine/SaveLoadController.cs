@@ -16,6 +16,10 @@ namespace FashionLine
 {
 	public abstract class SaveLoadController
 	{
+		public abstract int Version { get; }
+		public abstract string[] DataKeys { get; }
+		public enum LoadDataType : int { }
+
 		public SaveLoadController()
 		{
 
@@ -50,10 +54,6 @@ namespace FashionLine
 			}
 		}
 
-
-		public abstract int Version { get; }
-		public abstract string[] DataKeys { get; }
-
 		public abstract PluginData Save(CharaCustomFunctionController ctrler);
 		public abstract PluginData Load(CharaCustomFunctionController ctrler, PluginData data);
 		protected abstract PluginData UpdateVersionFromPrev(CharaCustomFunctionController ctrler, PluginData data);
@@ -63,24 +63,22 @@ namespace FashionLine
 	/// <summary>
 	/// saves controls from current data. make a new one if variables change
 	/// </summary>
-	internal class CurrentSaveLoadController : SaveLoadController
+	public class CurrentSaveLoadController : SaveLoadController
 	{
-		public new int Version => 1;
+		public override int Version => 1;
 
-		public new string[] DataKeys => new[] { "MorphData_values", "MorphData_targetCard", "MorphData_targetPng", "MorphData_ogSize" };
+		public override string[] DataKeys => new[]
+		{ "FashionData_Data", "FashionData_",};
 
+		public new enum LoadDataType : int
+		{
+			Data,
+		}
 
 		/*
 		 Data that can (potentially) affect the save:
-		* enum MorphCalcType
-		* class MorphControls
-		* class MorphData
-		* class MorphData.AMBXSections
-		* class MorphConfig 
-		* var CharaMorpher_Core.cfg.defaults
-		* var CharaMorpher_Core.cfg.controlCategories
-		* string CharaMorpher_Core.strDivider
-		* string CharaMorpher_Core.defaultStr
+		* 
+		* 
 		 all I can think of for now
 		 */
 
@@ -91,7 +89,7 @@ namespace FashionLine
 		/// <returns></returns>
 		protected override PluginData UpdateVersionFromPrev(CharaCustomFunctionController ctrler, PluginData data)
 		{
-			var ctrl = (CharaMorpherController)ctrler;
+			var ctrl = (FashionLineController)ctrler;
 
 
 			//if(data == null || data.version != Version)
@@ -100,30 +98,17 @@ namespace FashionLine
 			//	data = base.Load(ctrler, data)?.Copy();
 			//	
 			//	//CharaMorpher_Core.Logger.LogDebug($"Old version: {data?.version.ToString() ?? "Don't exist..."}");
-			//	if(data != null && data.version == base.Version)
-			//	{
-			//		//last version
-			//		var values = LZ4MessagePackSerializer.Deserialize<Dictionary<string, Tuple<float, MorphCalcType>>>((byte[])data.data[DataKeys[0]], CompositeResolver.Instance);
-			//
-			//		var tmpVals = values.ToDictionary((k) => k.Key.Trim(), (v) => new MorphSliderData(v.Key.Trim()/*just in case*/, data: v.Value.Item1, calc: v.Value.Item2));
-			//		var newValues = new MorphControls() { all = { { defaultStr, tmpVals } } };
-			//		data.data[DataKeys[0]] = LZ4MessagePackSerializer.Serialize(newValues, CompositeResolver.Instance);
-			//
-			//		data.version = Version;
-			//	}
-			//	else
-			//		data = null;
 			//}
 
 			if(data == null)
-				data = ctrler?.GetExtendedData(ctrl.isReloading);
+				data = ctrler?.GetExtendedData(false);
 
 			return data;
 		}
 
 		public override PluginData Load(CharaCustomFunctionController ctrler, PluginData data)
 		{
-			var ctrl = (CharaMorpherController)ctrler;
+			var ctrl = (FashionLineController)ctrler;
 
 			data = UpdateVersionFromPrev(ctrler, data);// use if version goes up (i.e. 1->2)
 
@@ -131,10 +116,13 @@ namespace FashionLine
 
 			try
 			{
+				if(data.version != Version) throw new Exception($"Target data was incorrect version: expected [V{Version}] instead of [V{data.version}]");
 
-				if(data.version != Version) throw new Exception($"Target card data was incorrect version: expected [V{Version}] instead of [V{data.version}]");
+				var carddata = LZ4MessagePackSerializer.Deserialize<Dictionary<string, CoordData>>((byte[])data.data[DataKeys[((int)LoadDataType.Data)]], CompositeResolver.Instance);
 
-				
+				if(carddata==null)throw new Exception("Data does not exist") ;
+
+					ctrl.fashionData = carddata;
 			}
 			catch(Exception e)
 			{
@@ -147,17 +135,22 @@ namespace FashionLine
 
 		public override PluginData Save(CharaCustomFunctionController ctrler)
 		{
-			if(!CharaMorpher_Core.cfg.saveAsMorphData.Value) return null;
-			
+			//if(!FashionLine_Core.cfg.saveAsMorphData.Value) return null;
 			PluginData data = new PluginData() { version = Version, };
+
 			try
 			{
-				var ctrl = (CharaMorpherController)ctrler;
-				
+				var ctrl = (FashionLineController)ctrler;
+
+				if(ctrl.fashionData?.IsNullOrEmpty() ?? true)
+					throw new Exception("No FashionLine Data to be Saved 😮");
+
+
+				data.data[DataKeys[((int)LoadDataType.Data)]] = LZ4MessagePackSerializer.Serialize(ctrl.fashionData, CompositeResolver.Instance);
 			}
 			catch(Exception e)
 			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData: \n {e} ");
+				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData: \n {e}\n");
 				return null;
 			}
 			ctrler.SetExtendedData(data);
