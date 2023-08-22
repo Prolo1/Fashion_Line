@@ -167,7 +167,14 @@ namespace FashionLine
 			rectTrans.localPosition = Vector3.zero;
 			rectTrans.pivot = new Vector2(0.5f, 0.5f);
 		}
+		public static IEnumerable<T> GetComponentsInChildren<T>(this GameObject obj, int depth) =>
+			 obj.GetComponentsInChildren<T>().Attempt((v1) =>
+			(((Component)(object)v1).transform.HierarchyLevelIndex() - obj.transform.HierarchyLevelIndex()) < (depth + 1) ?
+			v1 : (T)(object)((T)(object)null).GetType());
+		public static IEnumerable<T> GetComponentsInChildren<T>(this Component obj, int depth) =>
+			obj.gameObject.GetComponentsInChildren<T>(depth);
 
+		public static int HierarchyLevelIndex(this Transform obj) => obj.parent ? 1 + obj.parent.HierarchyLevelIndex() : 0;
 
 		/// <summary>
 		/// gets the text of the first Text or TMP_Text component in a game object or it's children.

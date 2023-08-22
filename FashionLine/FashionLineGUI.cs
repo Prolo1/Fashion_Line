@@ -12,10 +12,11 @@ using KKAPI.Utilities;
 using KKAPI.Maker;
 using KKAPI.Maker.UI;
 
+using AIChara;
+
 using static KKAPI.Maker.MakerAPI;
 using static FashionLine.FashionLine_Util;
 using static FashionLine.FashionLine_Core;
-
 
 namespace FashionLine
 {
@@ -104,11 +105,22 @@ namespace FashionLine
 			//boobCustom = null;
 			//bodyCustom = null;
 			//faceCustom = null;
+
+			gridLayout = null;
 		}
 
 		static MakerImage template = null;
 
-		private static void AddFashionLineMenu(RegisterCustomControlsEvent e)
+		static GridLayoutGroup gridLayout = null;
+
+		public static void AddCoordinate(ChaFileCoordinate coordinate)
+		{
+			var inst = FashionLine_Core.Instance;
+
+			inst.StartCoroutine(AddCoordinateCO(coordinate));
+		}
+
+		static void AddFashionLineMenu(RegisterCustomControlsEvent e)
 		{
 
 			Cleanup();
@@ -120,28 +132,48 @@ namespace FashionLine
 			template = e.AddControl(new MakerImage(Texture2D.blackTexture, category, inst));
 			template.OnGUIExists((gui) =>
 			{
-				//gui.ControlObject?.GetComponentInParent<ScrollRect>().content;
+				var scrollRect = gui.ControlObject.GetComponentInParent<ScrollRect>();
+
+				try
+				{
+					GameObject.Destroy(scrollRect.content.GetComponent<LayoutGroup>());
+				}
+				catch { }
+				var grid = scrollRect.content.GetOrAddComponent<GridLayoutGroup>();
+
+				int space = 7;
+				grid.constraintCount = 3;
+				grid.padding = new RectOffset(space, space, (int)(space * .5f), (int)(space * .5f));
+				grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+				grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+
+
 				gui.ControlObject.SetActive(false);
 			});
 			#endregion
 
 			e.AddControl(new MakerButton("Add", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayout(gui, horizontal: true)));
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true)));
 			e.AddControl(new MakerButton("Remove", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayout(gui, horizontal: true)));
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true)));
+			e.AddControl(new MakerDropdown("A Cool Drop", new[] { "thing 1", "thing 2", "thing 3", "thing 4", }, category, 0, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horiScale: .50f, horizontal: true)));
+
 			e.AddControl(new MakerButton("Test", category, inst))
-						.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayout(gui, horizontal: false)));
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false)));
 
 		}
 
-		static IEnumerator AddToBottomGUILayout(BaseGuiEntry gui, bool horizontal = false, bool newVertLine = false)
+		static IEnumerator AddToBottomGUILayoutCO(BaseGuiEntry gui, bool horizontal = false, float horiScale = -1, bool newVertLine = false)
 		{
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
 
-			yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null && gui.ControlObject.activeInHierarchy);
+			yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null);
 
-			var par = gui.ControlObject.GetComponentInParent<ScrollRect>()?.transform;
-			var scrollRect = gui.ControlObject.GetComponentInParent<ScrollRect>();
+			var ctrlObj = gui.ControlObject;
+
+			var par = ctrlObj.GetComponentInParent<ScrollRect>().transform;
+			var scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
 
 
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("Parent: " + par);
@@ -182,39 +214,35 @@ namespace FashionLine
 			scrollRect.content.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
 			var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
 			viewLE.minWidth = -1;
-			viewLE.minHeight = par.GetComponent<RectTransform>().rect.height;
+			viewLE.minHeight = scrollRect.transform.GetComponent<RectTransform>().rect.height * .75f;
 			//viewLE.minHeight = -1;
-			//viewLE.transform.Cast<RectTransform>();
 
 			viewLE.flexibleHeight = -1;
 			viewLE.flexibleWidth = -1;
 
 
-			//var elements = par.GetComponentsInChildren<LayoutElement>();
-			//foreach(var ele in elements)
-			//{
-			//	ele.preferredHeight = ele.GetComponent<RectTransform>().rect.height;
-			//	ele.preferredWidth = ele.GetComponent<RectTransform>().rect.width;
-			//}
-			//
-			////test
-			//elements = par.GetComponentInChildren<ScrollRect>().content.GetComponentsInChildren<LayoutElement>();
-			//foreach(var ele in elements)
-			//{
-			//	ele.preferredHeight = ele.GetComponent<RectTransform>().rect.height;
-			//	ele.preferredWidth = par.GetComponentInChildren<ScrollRect>().GetComponent<RectTransform>().rect.width * .95f;
-			//}
 
 			//Create Horizontal Layout
 			if(horizontal)
 			{
+				//if(gui.ControlObject.GetComponent<HorizontalLayoutGroup>())
+				//{
+				//	var tmp = GameObject.Instantiate<GameObject>(new GameObject("Ctrl Object"), gui.ControlObject.transform.parent);
+				//	gui.ControlObject.transform.SetParent(tmp.transform);
+				//	//ctrlObj = tmp;
+				//	//par = tmp?.transform.parent;
+				//	//scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
+				//
+				//}
+
 				//Create Layout Element GameObject
-				FashionLine_Core.Logger.LogInfo("Horizontal layout start");
+				FashionLine_Core.Logger.LogInfo($"Horizontal layout start {par.hierarchyCount}");
 				par = newVertLine ?
 					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform :
-					par.GetComponentsInChildren<LayoutElement>()
-					.LastOrNull((elem) => elem.gameObject.GetComponentInChildren<HorizontalLayoutGroup>())?.transform ??
+					par.GetComponentsInChildren<HorizontalLayoutGroup>(2)
+					.LastOrNull((elem) => elem.GetComponent<HorizontalLayoutGroup>())?.transform.parent ??
 					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform;
+
 				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
 
 				par.GetOrAddComponent<LayoutElement>();
@@ -245,7 +273,15 @@ namespace FashionLine
 			//Create and Set Horizontal Layout Settings
 			if(horizontal)
 			{
-				par = par.GetComponentsInChildren<HorizontalLayoutGroup>()?
+
+				//if(gui.ControlObject.GetComponent<HorizontalLayoutGroup>())
+				//{
+				//	var tmp = GameObject.Instantiate<GameObject>(new GameObject("Ctrl Object"), gui.ControlObject.transform.parent);
+				//	gui.ControlObject.transform.SetParent(tmp.transform);
+				//	par = tmp?.transform;
+				//}
+
+				par = par.GetComponentsInChildren<HorizontalLayoutGroup>(2)?
 					.LastOrNull((elem) => elem.gameObject.GetComponent<HorizontalLayoutGroup>())?.transform ??
 					GameObject.Instantiate<GameObject>(new GameObject("HorizontalLayoutGroup"), par)?.transform;
 				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
@@ -264,7 +300,7 @@ namespace FashionLine
 				layout.childAlignment = TextAnchor.MiddleCenter;
 
 				par?.GetComponent<RectTransform>()?.ScaleToParent2D();
-				FashionLine_Core.Logger.LogInfo($"Rect Size: {layout.GetComponent<RectTransform>().sizeDelta}");
+				FashionLine_Core.Logger.LogInfo($"Rect Size: {layout.GetComponent<RectTransform>().rect.size}");
 				FashionLine_Core.Logger.LogInfo($"Preferred Width: {layout.preferredWidth}");
 
 			}
@@ -272,29 +308,28 @@ namespace FashionLine
 
 			//Set this object's Layout settings
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("setting as last");
-			gui.ControlObject.transform.SetParent(par);
-			gui.ControlObject.transform.SetAsLastSibling();
-			var thisLE = gui.ControlObject.GetOrAddComponent<LayoutElement>();
+			ctrlObj.transform.SetParent(par);
+			ctrlObj.transform.SetAsLastSibling();
+			var thisLE = ctrlObj.GetOrAddComponent<LayoutElement>();
 
 			if(thisLE.transform.childCount > 0)
 				thisLE.transform.GetChild(0).GetComponent<RectTransform>().ScaleToParent2D();
 
 
 
-			thisLE.flexibleWidth = horizontal ? -1f : 0f;
+			thisLE.flexibleWidth = horizontal ? -1f : -1f;
 			//thisLE.;
 			thisLE.minWidth =
-
 #if HONEY_API
-			horizontal ? -1f : par.GetComponent<RectTransform>().rect.width;
+				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1f;
 #else
-			horizontal ? -1f : viewLE.minWidth;
+				horizontal && horiScale > 0 ? viewLE.minWidth * horiScale: -1f ;
 #endif
-			thisLE.preferredWidth = horizontal ? -1f : scrollRect.content.rect.width * .95f;
+			thisLE.preferredWidth = -1;//horizontal ? -1f : scrollRect.content.rect.width * .95f;
 
 
 			thisLE.flexibleHeight = -1f;
-			thisLE.preferredHeight = gui.ControlObject.GetComponent<RectTransform>().rect.height;
+			thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
 
 
 			//var ele2 = par.GetComponent<HorizontalLayoutGroup>();
@@ -308,6 +343,19 @@ namespace FashionLine
 			yield break;
 		}
 
+		static IEnumerator AddCoordinateCO(ChaFileCoordinate coordinate)
+		{
 
+			yield return new WaitWhile(() => gridLayout == null);
+			var comp = GameObject.Instantiate<GameObject>(template.ControlObject, template.ControlObject.transform.parent);
+			var img = comp.GetComponentInChildren<Image>();
+
+			img.material.mainTexture = coordinate.pngData.LoadTexture(TextureFormat.RGBA32);
+
+
+
+			comp.SetActive(true);
+			yield break;
+		}
 	}
 }

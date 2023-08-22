@@ -46,6 +46,8 @@ namespace FashionLine
 		}
 
 		protected override void OnCardBeingSaved(GameMode currentGameMode) { }
+
+		
 		#endregion
 	}
 
