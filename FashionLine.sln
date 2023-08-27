@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Master", "Master\Master.csp
 		{29F940DF-35A6-4C72-96F9-0DE421D48358} = {29F940DF-35A6-4C72-96F9-0DE421D48358}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[AI] FashionLine", "[AI] FashionLine\[AI] FashionLine.csproj", "{481FDB8A-097F-4325-A292-34F91B672656}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8A272414-08C8-415F-A0F3-64F5143A8B9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{481FDB8A-097F-4325-A292-34F91B672656}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{481FDB8A-097F-4325-A292-34F91B672656}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{481FDB8A-097F-4325-A292-34F91B672656}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{481FDB8A-097F-4325-A292-34F91B672656}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -35,6 +41,7 @@ Global
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		FashionLine\FashionLine.projitems*{29f940df-35a6-4c72-96f9-0de421d48358}*SharedItemsImports = 4
+		FashionLine\FashionLine.projitems*{481fdb8a-097f-4325-a292-34f91b672656}*SharedItemsImports = 4
 		FashionLine\FashionLine.projitems*{e0e648d7-642f-45ad-93ee-ab0eacfab1ce}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal

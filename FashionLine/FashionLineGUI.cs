@@ -1,22 +1,26 @@
 ﻿using System;
-using System.Linq;
-using System.Collections.Generic;
-using System.Text;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
 
-using CharaCustom;
+using BepInEx;
 using KKAPI.Utilities;
 using KKAPI.Maker;
 using KKAPI.Maker.UI;
 
+using Illusion.Game;
+using CharaCustom;
 using AIChara;
 
+
 using static KKAPI.Maker.MakerAPI;
-using static FashionLine.FashionLine_Util;
 using static FashionLine.FashionLine_Core;
+//using static FashionLine.FashionLine_Util;
+//using static Illusion.Game.Utils;
 
 namespace FashionLine
 {
@@ -25,12 +29,14 @@ namespace FashionLine
 	{
 
 		#region Data
-		private static MakerCategory category;
-
-		private static Coroutine lastExtent;
+		private static MakerCategory category = null;
 		public static readonly string subCategoryName = "FashionLine";
 		public static readonly string displayName = "Fashion Line";
 
+		static CoordData currentCoord = null;
+		static GridLayoutGroup gridLayout = null;
+		static ToggleGroup tglGroup = null;
+		static MakerImage template = null;
 
 #if HONEY_API
 		public static CvsO_Type charaCustom { get; private set; } = null;
@@ -45,7 +51,6 @@ namespace FashionLine
 #endif
 
 		#endregion
-
 
 		public static void Init()
 		{
@@ -99,71 +104,124 @@ namespace FashionLine
 
 		}
 
-		private static void Cleanup()
+		static void Cleanup()
 		{
-			//charaCustom = null;
-			//boobCustom = null;
-			//bodyCustom = null;
-			//faceCustom = null;
+			charaCustom = null;
+			boobCustom = null;
+			bodyCustom = null;
+			faceCustom = null;
+
+			//Seperation
 
 			gridLayout = null;
+			currentCoord = null;
+			tglGroup = null;
 		}
 
-		static MakerImage template = null;
-
-		static GridLayoutGroup gridLayout = null;
-
-		public static void AddCoordinate(ChaFileCoordinate coordinate)
+		public static void AddCoordinate(in CoordData coord)
 		{
 			var inst = FashionLine_Core.Instance;
+			inst.StartCoroutine(AddCoordinateCO(coord));
 
-			inst.StartCoroutine(AddCoordinateCO(coordinate));
+		}
+
+		public static void RemoveCoordinate(in CoordData coord)
+		{
+			var inst = FashionLine_Core.Instance;
+			inst.StartCoroutine(RemoveCoordinateCO(coord));
 		}
 
 		static void AddFashionLineMenu(RegisterCustomControlsEvent e)
 		{
-
 			Cleanup();
 
 			var inst = FashionLine_Core.Instance;
-
+			var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLineController>();
 
 			#region Init
 			template = e.AddControl(new MakerImage(Texture2D.blackTexture, category, inst));
 			template.OnGUIExists((gui) =>
 			{
 				var scrollRect = gui.ControlObject.GetComponentInParent<ScrollRect>();
+				var layoutEle = gui.ControlObject.GetComponent<LayoutElement>();
+				tglGroup = gui.ControlObject.transform.parent.GetOrAddComponent<ToggleGroup>();
+				tglGroup.allowSwitchOff = true;
+				gui.ControlObject.SetActive(false);
+
+
+				var imgObj = gui.ControlObject.GetComponentInChildren<RawImage>().gameObject.ScaleToParent2D();
+
+				var tgl = imgObj.GetOrAddComponent<Toggle>();
+
+
+				tgl.group = tglGroup;
+
+
+
+				layoutEle.minWidth = 100;
+				layoutEle.minHeight = 165;
+				layoutEle.preferredWidth = -1;
+				layoutEle.preferredHeight = -1;
 
 				try
 				{
-					GameObject.Destroy(scrollRect.content.GetComponent<LayoutGroup>());
+					GameObject.DestroyImmediate(scrollRect.content.GetComponent<LayoutGroup>());
 				}
 				catch { }
-				var grid = scrollRect.content.GetOrAddComponent<GridLayoutGroup>();
+				gridLayout = scrollRect.content.gameObject.AddComponent<GridLayoutGroup>();
+
+
 
 				int space = 7;
-				grid.constraintCount = 3;
-				grid.padding = new RectOffset(space, space, (int)(space * .5f), (int)(space * .5f));
-				grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-				grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
-
-
-				gui.ControlObject.SetActive(false);
+				gridLayout.constraintCount = 3;
+				gridLayout.spacing = new Vector2(space, space * .5f);
+				gridLayout.cellSize = new Vector2(layoutEle.transform.parent.GetComponent<RectTransform>().rect.width / (gridLayout.constraintCount + .5f), layoutEle.minHeight);
+				gridLayout.cellSize = new Vector2(gridLayout.cellSize.x, gridLayout.cellSize.x * 1.3f);
+				gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+				gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
+				gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
+				gridLayout.childAlignment = TextAnchor.MiddleCenter;
 			});
 			#endregion
 
-			e.AddControl(new MakerButton("Add", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true)));
-			e.AddControl(new MakerButton("Remove", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true)));
-			e.AddControl(new MakerDropdown("A Cool Drop", new[] { "thing 1", "thing 2", "thing 3", "thing 4", }, category, 0, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horiScale: .50f, horizontal: true)));
+			((MakerButton)e.AddControl(new MakerButton("Add", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true))))
+				.OnClick.AddListener(() =>
+				{
+					ForeGrounder.SetCurrentForground();
+					GetNewImageTarget();
+				});
 
-			e.AddControl(new MakerButton("Test", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false)));
+			((MakerButton)e.AddControl(new MakerButton("Remove", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true))))
+				.OnClick.AddListener(() =>
+				{
+					if(!tglGroup.AnyTogglesOn()) return;
 
+					fashCtrl.RemoveFashion(in currentCoord);
+					Illusion.Game.Utils.Sound.Play(SystemSE.cancel);
+				});
+
+			((MakerButton)e.AddControl(new MakerButton("Wear Selected Costume", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false))))
+				.OnClick.AddListener(() =>
+				{
+					if(!tglGroup.AnyTogglesOn()) return;
+
+					fashCtrl.WearCostume(currentCoord);
+					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+				});
+
+			((MakerButton)e.AddControl(new MakerButton("Wear Drfault Costume", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false))))
+				.OnClick.AddListener(() =>
+				{
+					fashCtrl.WearDefaultCostume();
+					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+				});
 		}
 
+		#region Coroutine Helpers
 		static IEnumerator AddToBottomGUILayoutCO(BaseGuiEntry gui, bool horizontal = false, float horiScale = -1, bool newVertLine = false)
 		{
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
@@ -222,21 +280,11 @@ namespace FashionLine
 
 
 
-			//Create Horizontal Layout
+			//Create  LayoutElement
 			if(horizontal)
 			{
-				//if(gui.ControlObject.GetComponent<HorizontalLayoutGroup>())
-				//{
-				//	var tmp = GameObject.Instantiate<GameObject>(new GameObject("Ctrl Object"), gui.ControlObject.transform.parent);
-				//	gui.ControlObject.transform.SetParent(tmp.transform);
-				//	//ctrlObj = tmp;
-				//	//par = tmp?.transform.parent;
-				//	//scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
-				//
-				//}
 
 				//Create Layout Element GameObject
-				FashionLine_Core.Logger.LogInfo($"Horizontal layout start {par.hierarchyCount}");
 				par = newVertLine ?
 					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform :
 					par.GetComponentsInChildren<HorizontalLayoutGroup>(2)
@@ -245,17 +293,13 @@ namespace FashionLine
 
 				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
 
-				par.GetOrAddComponent<LayoutElement>();
 
-			}
-			//calculate base GameObject sizeing
-			if(horizontal)
-			{
+				//calculate base GameObject sizeing
 
 				var ele = par.GetOrAddComponent<LayoutElement>();
 				ele.minWidth = -1;
 				ele.minHeight = -1;
-				ele.preferredHeight = Math.Max(ele?.preferredHeight ?? -1, par.GetComponentsInChildren<LayoutElement>()?.LastOrNull()?.preferredHeight ?? ele?.preferredHeight ?? -1);
+				ele.preferredHeight = Math.Max(ele?.preferredHeight ?? -1, ctrlObj.GetOrAddComponent<LayoutElement>()?.minHeight ?? ele?.preferredHeight ?? -1);
 				ele.preferredWidth =
 #if HONEY_API
 				scrollRect.GetComponent<RectTransform>().rect.width;
@@ -265,21 +309,9 @@ namespace FashionLine
 
 				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputHorizontal();
 				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputVertical();
-				FashionLine_Core.Logger.LogInfo("Horizontal layout end");
-
-			}
 
 
-			//Create and Set Horizontal Layout Settings
-			if(horizontal)
-			{
-
-				//if(gui.ControlObject.GetComponent<HorizontalLayoutGroup>())
-				//{
-				//	var tmp = GameObject.Instantiate<GameObject>(new GameObject("Ctrl Object"), gui.ControlObject.transform.parent);
-				//	gui.ControlObject.transform.SetParent(tmp.transform);
-				//	par = tmp?.transform;
-				//}
+				//Create and Set Horizontal Layout Settings
 
 				par = par.GetComponentsInChildren<HorizontalLayoutGroup>(2)?
 					.LastOrNull((elem) => elem.gameObject.GetComponent<HorizontalLayoutGroup>())?.transform ??
@@ -288,10 +320,6 @@ namespace FashionLine
 
 				var layout = par.GetOrAddComponent<HorizontalLayoutGroup>();
 
-				FashionLine_Core.Logger.LogInfo("Parent created");
-
-				if(par == null)
-					FashionLine_Core.Logger.LogInfo("Parent is null");
 
 				layout.childControlWidth = true;
 				layout.childControlHeight = true;
@@ -300,9 +328,6 @@ namespace FashionLine
 				layout.childAlignment = TextAnchor.MiddleCenter;
 
 				par?.GetComponent<RectTransform>()?.ScaleToParent2D();
-				FashionLine_Core.Logger.LogInfo($"Rect Size: {layout.GetComponent<RectTransform>().rect.size}");
-				FashionLine_Core.Logger.LogInfo($"Preferred Width: {layout.preferredWidth}");
-
 			}
 
 
@@ -317,45 +342,161 @@ namespace FashionLine
 
 
 
-			thisLE.flexibleWidth = horizontal ? -1f : -1f;
-			//thisLE.;
-			thisLE.minWidth =
+			thisLE.flexibleWidth = -1;
+			thisLE.flexibleHeight = -1;
+			thisLE.minWidth = -1;
+			//thisLE.minHeight = -1;
+
+			thisLE.preferredWidth =
 #if HONEY_API
-				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1f;
+				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1;
 #else
-				horizontal && horiScale > 0 ? viewLE.minWidth * horiScale: -1f ;
+				horizontal && horiScale > 0 ? viewLE.minWidth * horiScale: -1 ;
 #endif
-			thisLE.preferredWidth = -1;//horizontal ? -1f : scrollRect.content.rect.width * .95f;
+			//thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
 
-
-			thisLE.flexibleHeight = -1f;
-			thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
-
-
-			//var ele2 = par.GetComponent<HorizontalLayoutGroup>();
-			//ele2?.CalculateLayoutInputHorizontal();
-			//ele2?.CalculateLayoutInputVertical();
-			//FashionLine_Core.Logger.LogInfo($"Rect Size: {ele2?.GetComponent<RectTransform>().sizeDelta.ToString() ?? "Null"}");
-			//FashionLine_Core.Logger.LogInfo($"Preferred Width: {ele2?.preferredWidth.ToString() ?? "Null"}");
 
 			//Reorder Scrollbar
 			scrollRect.verticalScrollbar.transform.SetAsLastSibling();
 			yield break;
 		}
 
-		static IEnumerator AddCoordinateCO(ChaFileCoordinate coordinate)
+		static IEnumerator AddCoordinateCO(CoordData coordinate)
 		{
 
 			yield return new WaitWhile(() => gridLayout == null);
+
 			var comp = GameObject.Instantiate<GameObject>(template.ControlObject, template.ControlObject.transform.parent);
-			var img = comp.GetComponentInChildren<Image>();
+			var img = comp.GetComponentInChildren<RawImage>();
+			img.texture = coordinate.data?.LoadTexture(TextureFormat.RGBA32);
 
-			img.material.mainTexture = coordinate.pngData.LoadTexture(TextureFormat.RGBA32);
+			var tgl = comp.GetComponentInChildren<Toggle>();
+			coordinate.extras.Add(tgl);
 
+			tgl.targetGraphic = img;
+			tgl.colors = new ColorBlock()
+			{
+				normalColor = Color.white,
+				highlightedColor = new Color(1, 1, 1, .75f),
+				pressedColor = new Color(1, 1, 1, .45f),
+				colorMultiplier = 1,
+				fadeDuration = 0.1f,
+			};
 
+			tgl.onValueChanged.AddListener((val) =>
+			{
+				img.color = Color.white;
+				currentCoord = null;
+
+				if(!val) return;
+
+				img.color = Color.green - new Color(0, 0, 0, .15f);
+				currentCoord = coordinate;
+				//img.dirty
+			});
 
 			comp.SetActive(true);
 			yield break;
 		}
+
+		static IEnumerator RemoveCoordinateCO(CoordData coordinate)
+		{
+
+			yield return new WaitWhile(() => gridLayout == null);
+
+			Toggle tmp = (Toggle)coordinate.extras.FirstOrNull((obj) => obj is Toggle);
+			if(tmp)
+				GameObject.Destroy(tmp.transform.parent.gameObject);
+
+			if(tmp.isOn) currentCoord = null;
+
+			yield break;
+		}
+
+		#endregion
+
+		#region Image Stuff
+
+		#region File Data
+		public const string FileExt = ".png";
+		public const string FileFilter = "Coordinate Images (*.png)|*.png";
+
+		private static string _defaultOverlayDirectory { get => (Directory.GetCurrentDirectory() + "/UserData/coordinate/").MakeDirPath(); }
+
+		public static string TargetDirectory { get => Directory.Exists(cfg.lastCoordDir.Value) && !cfg.lastCoordDir.Value.IsNullOrWhiteSpace() ? cfg.lastCoordDir.Value : _defaultOverlayDirectory; }
+
+		#endregion
+
+		private static string MakeDirPath(string path) => FashionLine_Util.MakeDirPath(path);
+
+
+		/// <summary>
+		/// Called after a file is chosen in file explorer menu  
+		/// </summary>
+		/// <param name="strings: ">the info returned from file explorer. strings[0] returns the full file path</param>
+		private static void OnFileObtained(string[] strings)
+		{
+
+			ForeGrounder.RevertForground();
+			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug($"Enters accept");
+			if(strings == null || strings.Length == 0) return;
+
+			foreach(string s in strings)
+			{
+				var texPath = s.MakeDirPath();
+
+				if(cfg.debug.Value)
+				{
+					FashionLine_Core.Logger.LogDebug($"Original path: {texPath}");
+					FashionLine_Core.Logger.LogDebug($"texture path: {Path.Combine(Path.GetDirectoryName(texPath), Path.GetFileName(texPath))}");
+				}
+
+				if(string.IsNullOrEmpty(texPath)) continue;
+
+				//	var directory = Path.GetDirectoryName(texPath).MakeDirPath();
+				var filename = texPath.Substring(texPath.LastIndexOf('/') + 1).MakeDirPath();//not sure why this happens on hs2?
+
+				//use file
+				var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLineController>();
+
+				var coord = new ChaFileCoordinate();
+				coord.LoadFile(texPath);
+				var name = filename.Substring(0, filename.LastIndexOf('.'));
+				name = !coord.coordinateName.IsNullOrWhiteSpace() ?
+					coord.coordinateName ?? name : name;
+
+				fashCtrl.AddFashion(name, new CoordData()
+				{
+					data = File.ReadAllBytes(texPath),
+					name = name
+				});
+			}
+			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug($"Exit accept");
+		}
+
+		public static void GetNewImageTarget()
+		{
+			//	OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT;
+			FashionLine_Core.Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
+
+			var paths = OpenFileDialog.ShowDialog("Add New Coordinate[s] (You can select multiple)",
+			TargetDirectory.MakeDirPath("/", "\\"),
+			FileFilter,
+			FileExt,
+			OpenFileDialog.MultiFileFlags | OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT & ~OpenFileDialog.OpenSaveFileDialgueFlags.OFN_NOCHANGEDIR,
+			owner: ForeGrounder.GetForgroundHandeler());
+
+			var path = paths?.Attempt((s) => s.IsNullOrWhiteSpace() ?
+			throw new Exception() : s).LastOrNull().MakeDirPath();
+
+			cfg.lastCoordDir.Value = path?.Substring(0, path.LastIndexOf('/')) ?? TargetDirectory;
+
+			OnFileObtained(paths);
+			Illusion.Game.Utils.Sound.Play(Illusion.Game.SystemSE.ok_l);
+		}
+		#endregion
+
 	}
+
 }
+

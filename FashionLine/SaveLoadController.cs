@@ -1,16 +1,27 @@
-﻿using ExtensibleSaveFormat;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Runtime.Serialization.Formatters.Binary;
+
+using UnityEngine;
+using UnityEngine.UI;
+
 using KKAPI.Chara;
 using KKAPI.Maker;
+using KKAPI.Utilities;
 using MessagePack.Resolvers;
 using MessagePack.Unity;
 using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using static BepInEx.Logging.LogLevel;
+using ExtensibleSaveFormat;
 
+using CharaCustom;
+using Manager;
+
+using static BepInEx.Logging.LogLevel;
+//using AIProject;
 
 namespace FashionLine
 {
@@ -24,9 +35,9 @@ namespace FashionLine
 		{
 
 			CompositeResolver.Register(
-				BuiltinResolver.Instance,
-				StandardResolver.Instance,
 				UnityResolver.Instance,
+				StandardResolver.Instance,
+				BuiltinResolver.Instance,
 				//default resolver
 				ContractlessStandardResolver.Instance
 				);
@@ -54,7 +65,7 @@ namespace FashionLine
 			}
 		}
 
-		public abstract PluginData Save(CharaCustomFunctionController ctrler);
+		public abstract PluginData Save(CharaCustomFunctionController ctrler, PluginData data = null);
 		public abstract PluginData Load(CharaCustomFunctionController ctrler, PluginData data);
 		protected abstract PluginData UpdateVersionFromPrev(CharaCustomFunctionController ctrler, PluginData data);
 
@@ -101,7 +112,7 @@ namespace FashionLine
 			//}
 
 			if(data == null)
-				data = ctrler?.GetExtendedData(false);
+				data = ctrler?.GetExtendedData(true);
 
 			return data;
 		}
@@ -120,37 +131,47 @@ namespace FashionLine
 
 				var carddata = LZ4MessagePackSerializer.Deserialize<Dictionary<string, CoordData>>((byte[])data.data[DataKeys[((int)LoadDataType.Data)]], CompositeResolver.Instance);
 
-				if(carddata==null)throw new Exception("Data does not exist") ;
+				if(carddata == null) throw new Exception("Data does not exist");
 
-					ctrl.fashionData = carddata;
+				FashionLine_Core.Logger.LogInfo($"cardata count: {carddata.Count}");
+				foreach(var line in carddata)
+					ctrl.AddFashion(line.Key, line.Value);
 			}
 			catch(Exception e)
 			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not load PluginData:\n{e}\n");
+				FashionLine_Core.Logger.Log(Error | Message, $"Could not load PluginData:\n{e.Message}");
+				FashionLine_Core.Logger.Log(Error, $"{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
 
 			return data;
 		}
 
-		public override PluginData Save(CharaCustomFunctionController ctrler)
+		public override PluginData Save(CharaCustomFunctionController ctrler, PluginData data = null)
 		{
-			//if(!FashionLine_Core.cfg.saveAsMorphData.Value) return null;
-			PluginData data = new PluginData() { version = Version, };
+			if(data == null)
+				data = new PluginData() { version = Version };
 
 			try
 			{
 				var ctrl = (FashionLineController)ctrler;
 
-				if(ctrl.fashionData?.IsNullOrEmpty() ?? true)
+				if(ctrl.fashionData == null)
 					throw new Exception("No FashionLine Data to be Saved 😮");
+				if(ctrl.fashionData.Count <= 0) return null;
+				
+				var dataLine = ctrl.fashionData.ToDictionary((k) => k.Key, (v) => v.Value.Clone());
+				foreach(var fashion in dataLine)
+					for(int a = 0; a < fashion.Value.extras.Count; ++a)
+						if(fashion.Value.extras[a] is Toggle)
+							fashion.Value.extras.Remove(fashion.Value.extras[a--]);
 
-
-				data.data[DataKeys[((int)LoadDataType.Data)]] = LZ4MessagePackSerializer.Serialize(ctrl.fashionData, CompositeResolver.Instance);
+				data.data[DataKeys[((int)LoadDataType.Data)]] = LZ4MessagePackSerializer.Serialize(dataLine, CompositeResolver.Instance);
 			}
 			catch(Exception e)
 			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData: \n {e}\n");
+				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData:\n{e.Message}");
+				FashionLine_Core.Logger.Log(Error, $"{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
 			ctrler.SetExtendedData(data);

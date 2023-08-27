@@ -89,6 +89,10 @@
       <HintPath>..\packages\IllusionLibs.HoneySelect2.UnityEngine.CoreModule.2018.4.11.4\lib\net46\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.2018.4.11.4\lib\net46\UnityEngine.AudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\IllusionLibs.HoneySelect2.UnityEngine.CoreModule.2018.4.11.4\lib\net46\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
@@ -135,6 +139,7 @@
     <Error Condition="!Exists('..\packages\IllusionLibs.HoneySelect2.UnityEngine.UIModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.UIModule.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.HoneySelect2.UnityEngine.UIModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.UIModule.targets'))" />
     <Error Condition="!Exists('..\packages\IllusionLibs.HoneySelect2.Unity.TextMeshPro.2018.4.11.4\build\IllusionLibs.HoneySelect2.Unity.TextMeshPro.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.HoneySelect2.Unity.TextMeshPro.2018.4.11.4\build\IllusionLibs.HoneySelect2.Unity.TextMeshPro.targets'))" />
     <Error Condition="!Exists('..\packages\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.targets'))" />
+    <Error Condition="!Exists('..\packages\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.targets'))" />
   </Target>
   <Import Project="..\packages\IllusionLibs.HoneySelect2.Assembly-CSharp.2020.5.29.4\build\IllusionLibs.HoneySelect2.Assembly-CSharp.targets" Condition="Exists('..\packages\IllusionLibs.HoneySelect2.Assembly-CSharp.2020.5.29.4\build\IllusionLibs.HoneySelect2.Assembly-CSharp.targets')" />
   <Import Project="..\packages\IllusionLibs.HoneySelect2.Assembly-CSharp-firstpass.2020.5.29.4\build\IllusionLibs.HoneySelect2.Assembly-CSharp-firstpass.targets" Condition="Exists('..\packages\IllusionLibs.HoneySelect2.Assembly-CSharp-firstpass.2020.5.29.4\build\IllusionLibs.HoneySelect2.Assembly-CSharp-firstpass.targets')" />
@@ -151,4 +156,5 @@
   </PropertyGroup>
   <Import Project="..\packages\IllusionLibs.HoneySelect2.Unity.TextMeshPro.2018.4.11.4\build\IllusionLibs.HoneySelect2.Unity.TextMeshPro.targets" Condition="Exists('..\packages\IllusionLibs.HoneySelect2.Unity.TextMeshPro.2018.4.11.4\build\IllusionLibs.HoneySelect2.Unity.TextMeshPro.targets')" />
   <Import Project="..\packages\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.targets" Condition="Exists('..\packages\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.TextRenderingModule.targets')" />
+  <Import Project="..\packages\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.targets" Condition="Exists('..\packages\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.2018.4.11.4\build\IllusionLibs.HoneySelect2.UnityEngine.AudioModule.targets')" />
 </Project>

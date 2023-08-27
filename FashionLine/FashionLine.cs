@@ -1,23 +1,23 @@
-﻿// Ignore Spelling: saveload
-
-using System;
-using System.Collections.Generic;
-using System.Text;
-using UnityEngine;
-using KKAPI;
-using KKAPI.Utilities;
-using BepInEx;
-using BepInEx.Logging;
-using ExtensibleSaveFormat;
-using KKAPI.Chara;
-using BepInEx.Configuration;
-using KKAPI.Maker.UI;
+﻿using System;
 using System.Collections;
-using UnityEngine.Events;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TMPro;
+using System.Runtime.InteropServices;
+
+using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
+using TMPro;
+
+using KKAPI;
+using KKAPI.Utilities;
+using KKAPI.Maker.UI;
+using KKAPI.Chara;
+using BepInEx;
+using BepInEx.Logging;
+using BepInEx.Configuration;
+using ExtensibleSaveFormat;
 
 namespace FashionLine
 {
@@ -51,12 +51,17 @@ namespace FashionLine
 			//Advanced
 			public ConfigEntry<bool> resetOnLaunch;
 			public ConfigEntry<bool> debug;
+
+			//Hiden
+			public ConfigEntry<string> lastCoordDir;
+
 		}
 
 		void Awake()
 		{
 			Instance = this;
 			Logger = base.Logger;
+			ForeGrounder.SetCurrentForground();
 
 			string main = "\0\0\0\0\0\0Main";
 			string adv = "\0\0\0\0\0Advanced";
@@ -77,6 +82,11 @@ namespace FashionLine
 				//Advanced
 				resetOnLaunch = Config.Bind(adv, "Reset On Launch", false, new ConfigDescription("", null,
 				new ConfigurationManagerAttributes() { Order = index-- })),
+
+				//Hiden
+				lastCoordDir = Config.Bind(adv, "Last Coord Dir.", "", new ConfigDescription("", null,
+				new ConfigurationManagerAttributes() { Order = index--, Browsable = false, })),
+
 			};
 
 			//Advanced
@@ -96,8 +106,16 @@ namespace FashionLine
 		static FashionLine_Core.FashionLineConfig cfg { get => FashionLine_Core.cfg; }
 		public static readonly CurrentSaveLoadController saveload = new CurrentSaveLoadController();
 
-		public static PluginData SaveExtData(this FashionLineController ctrl) => saveload.Save(ctrl);
-		public static PluginData LoadExtData(this FashionLineController ctrl, PluginData data = null) => saveload.Load(ctrl, data);
+		public static PluginData SaveExtData(this FashionLineController ctrl)
+		{
+			//	FashionLine_Core.Logger.LogMessage("Saved Extended Data!");
+			return saveload.Save(ctrl);
+		}
+		public static PluginData LoadExtData(this FashionLineController ctrl, PluginData data = null)
+		{
+			//FashionLine_Core.Logger.LogMessage("Loaded Extended Data!");
+			return saveload.Load(ctrl, data);
+		}
 
 		/// <summary>
 		/// Crates Image Texture based on path
@@ -105,7 +123,7 @@ namespace FashionLine
 		/// <param name="path">directory path to image (i.e. C:/path/to/image.png)</param>
 		/// <param name="data">raw image data that will be read instead of path if not null or empty</param>
 		/// <returns>An Texture2D created from path if passed, else a black texture</returns>
-		public static Texture2D CreateTexture(this string path, byte[] data = null, bool preferpath = false) =>
+		public static Texture2D CreateTexture(this string path, byte[] data = null) =>
 			(!data.IsNullOrEmpty() || !File.Exists(path)) ?
 			data?.LoadTexture(TextureFormat.RGBA32) ?? Texture2D.blackTexture :
 			File.ReadAllBytes(path)?.LoadTexture(TextureFormat.RGBA32) ??
@@ -157,8 +175,15 @@ namespace FashionLine
 			{ return enu.Count() > 0 ? enu.Last(predicate) : (T)(object)null; }
 			catch { return (T)(object)null; }
 		}   //I love loopholes 🤣
-		public static void ScaleToParent2D(this RectTransform rectTrans)
+
+		public static GameObject ScaleToParent2D(this GameObject obj)
 		{
+			RectTransform rectTrans = null;
+
+			rectTrans = obj.GetComponent<RectTransform>();
+
+			if(rectTrans == null) return obj;
+
 			//var rectTrans = par.GetComponent<RectTransform>();
 			rectTrans.anchorMin = Vector2.zero;
 			rectTrans.anchorMax = Vector2.one;
@@ -166,7 +191,29 @@ namespace FashionLine
 			rectTrans.offsetMin = Vector2.zero;
 			rectTrans.localPosition = Vector3.zero;
 			rectTrans.pivot = new Vector2(0.5f, 0.5f);
+
+			return obj;
 		}
+
+		public static T ScaleToParent2D<T>(this T comp)
+		{
+			RectTransform rectTrans = null;
+			if(comp is Component)
+				rectTrans = ((Component)(object)comp).GetComponent<RectTransform>();
+
+			if(rectTrans == null) return comp;
+
+			//var rectTrans = par.GetComponent<RectTransform>();
+			rectTrans.anchorMin = Vector2.zero;
+			rectTrans.anchorMax = Vector2.one;
+			rectTrans.offsetMax = Vector2.zero;
+			rectTrans.offsetMin = Vector2.zero;
+			rectTrans.localPosition = Vector3.zero;
+			rectTrans.pivot = new Vector2(0.5f, 0.5f);
+
+			return comp;
+		}
+
 		public static IEnumerable<T> GetComponentsInChildren<T>(this GameObject obj, int depth) =>
 			 obj.GetComponentsInChildren<T>().Attempt((v1) =>
 			(((Component)(object)v1).transform.HierarchyLevelIndex() - obj.transform.HierarchyLevelIndex()) < (depth + 1) ?
@@ -210,6 +257,74 @@ namespace FashionLine
 		/// <param name="v2"></param>
 		public static ConfigEntry<T> ConfigDefaulter<T>(this ConfigEntry<T> v1) => v1.ConfigDefaulter((T)v1.DefaultValue);
 
+		/// <summary>
+		/// makes sure a path fallows the format "this/is/a/path" and not "this//is\\a/path" or similar
+		/// </summary>
+		/// <param name="dir"></param>
+		/// <returns></returns>
+		public static string MakeDirPath(this string dir, string oldslash = "\\", string newslash = "/")
+		{
+
+			dir = (dir ?? "").Trim().Replace(oldslash, newslash).Replace(newslash + newslash, newslash);
+
+			if((dir.LastIndexOf('.') < dir.LastIndexOf(newslash))
+				&& dir.Substring(dir.Length - newslash.Length) != newslash)
+				dir += newslash;
+
+			return dir;
+		}
+
+		/// <summary>
+		/// Returns a list of the regestered handeler specified. returns empty list otherwise 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public static IEnumerable<T> GetFuncCtrlOfType<T>()
+		{
+			foreach(var hnd in CharacterApi.RegisteredHandlers)
+				if(hnd.ControllerType == typeof(T))
+					return hnd.Instances.Cast<T>();
+
+			return new T[] { };
+		}
+
 
 	}
+
+	/// <summary>
+	/// utility to bring process to foreground (used for the file select)
+	/// </summary>
+	public class ForeGrounder
+	{
+		static IntPtr ptr = IntPtr.Zero;
+
+		/// <summary>
+		/// set window to go back to
+		/// </summary>
+		public static void SetCurrentForground()
+		{
+			ptr = GetActiveWindow();
+
+			//	MorphUtil.Logger.LogDebug($"Process ptr 1 set to: {ptr}");
+		}
+
+		/// <summary>
+		/// reverts back to last window specified by SetCurrentForground
+		/// </summary>
+		public static void RevertForground()
+		{
+			//	MorphUtil.Logger.LogDebug($"process ptr: {ptr}");
+
+			if(ptr != IntPtr.Zero)
+				SwitchToThisWindow(ptr, true);
+		}
+
+		public static IntPtr GetForgroundHandeler() => ptr;
+
+		[DllImport("user32.dll")]
+		static extern IntPtr GetActiveWindow();
+		[DllImport("user32.dll")]
+		static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+	}
+
 }

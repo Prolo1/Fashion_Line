@@ -38,6 +38,11 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\[AI] FashionLine\[AI] FashionLine.csproj">
+      <Project>{481fdb8a-097f-4325-a292-34f91b672656}</Project>
+      <Name>[AI] FashionLine</Name>
+      <Aliases>AI</Aliases>
+    </ProjectReference>
     <ProjectReference Include="..\[HS2] FashionLine\[HS2] FashionLine.csproj">
       <Project>{29f940df-35a6-4c72-96f9-0de421d48358}</Project>
       <Name>[HS2] FashionLine</Name>
@@ -48,4 +53,7 @@
     <Compile Include="AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>powershell "&amp; '$(SolutionDir)Post-Builder.ps1' '$(TargetPath)'  '$(SolutionDir)zipper master.bat' '$(TargetDir)..\..\..\..\Master.zip' '$(TargetDir)..\..\..\..\' '$(SolutionDir)Readme.md'"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
