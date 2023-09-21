@@ -18,6 +18,7 @@ using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Configuration;
 using ExtensibleSaveFormat;
+using KoiClothesOverlayX;
 
 namespace FashionLine
 {
@@ -29,6 +30,9 @@ namespace FashionLine
 	// Tell BepInEx that we need ExtendedSave to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(ExtensibleSaveFormat.ExtendedSave.GUID, ExtensibleSaveFormat.ExtendedSave.Version)]
+	// Tell BepInEx that we need Overlay to run, and that we need the latest version of it.
+	// Check documentation of KoikatuAPI.VersionConst for more info.
+	[BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency)]
 	public partial class FashionLine_Core : BaseUnityPlugin
 	{
 		public static FashionLine_Core Instance;
@@ -39,7 +43,7 @@ namespace FashionLine
 
 		internal static new ManualLogSource Logger;
 
-
+		internal static bool KoiOverlayModExists = false;
 		public static FashionLineConfig cfg;
 		public struct FashionLineConfig
 		{
@@ -63,8 +67,18 @@ namespace FashionLine
 			Logger = base.Logger;
 			ForeGrounder.SetCurrentForground();
 
-			string main = "\0\0\0\0\0\0Main";
-			string adv = "\0\0\0\0\0Advanced";
+			//Info.Metadata;
+			var data = (KoiClothesOverlayMgr)FindObjectOfType(typeof(KoiClothesOverlayMgr));
+			KoiOverlayModExists = data == null ? false :
+			data.Info.Metadata.Version >= new Version(KoiClothesOverlayMgr.Version);
+
+			if(KoiOverlayModExists)
+				Logger.LogInfo("Koi Overlay Mod Exists!!!!!!!!");
+			else
+				Logger.LogInfo("Koi Overlay Mod Does Not Exist!!!!!!!!");
+
+			string main = "";
+			string adv = "Advanced";
 
 			int index = 0;
 			cfg = new FashionLineConfig()
@@ -80,19 +94,19 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, })),
 
 				//Advanced
-				resetOnLaunch = Config.Bind(adv, "Reset On Launch", false, new ConfigDescription("", null,
-				new ConfigurationManagerAttributes() { Order = index-- })),
+				resetOnLaunch = Config.Bind(adv, "Reset On Launch", true, new ConfigDescription("", null,
+				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })),
 
 				//Hiden
 				lastCoordDir = Config.Bind(adv, "Last Coord Dir.", "", new ConfigDescription("", null,
-				new ConfigurationManagerAttributes() { Order = index--, Browsable = false, })),
+				new ConfigurationManagerAttributes() { Order = index--, Browsable = false, IsAdvanced = true })),
 
 			};
 
 			//Advanced
 			{
 				cfg.debug = Config.Bind(adv, "Log Debug", false, new ConfigDescription("", null,
-				new ConfigurationManagerAttributes() { Order = index-- })).ConfigDefaulter();
+				new ConfigurationManagerAttributes() { Order = index-- , IsAdvanced = true })).ConfigDefaulter();
 			}
 
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
@@ -176,7 +190,7 @@ namespace FashionLine
 			catch { return (T)(object)null; }
 		}   //I love loopholes 🤣
 
-		public static GameObject ScaleToParent2D(this GameObject obj)
+		public static GameObject ScaleToParent2D(this GameObject obj, bool width = true, bool height = true)
 		{
 			RectTransform rectTrans = null;
 
@@ -185,31 +199,29 @@ namespace FashionLine
 			if(rectTrans == null) return obj;
 
 			//var rectTrans = par.GetComponent<RectTransform>();
-			rectTrans.anchorMin = Vector2.zero;
-			rectTrans.anchorMax = Vector2.one;
-			rectTrans.offsetMax = Vector2.zero;
-			rectTrans.offsetMin = Vector2.zero;
+			rectTrans.anchorMin = new Vector2(
+				width ? 0 : rectTrans.anchorMin.x,
+				height ? 0 : rectTrans.anchorMin.y);
+			rectTrans.anchorMax = new Vector2(
+				width ? 1 : rectTrans.anchorMax.x,
+				height ? 1 : rectTrans.anchorMax.y);
+			rectTrans.offsetMin = new Vector2(
+				width ? 0 : rectTrans.offsetMin.x,
+				height ? 0 : rectTrans.offsetMin.y);
+			rectTrans.offsetMax = new Vector2(
+				width ? 0 : rectTrans.offsetMax.x,
+				height ? 0 : rectTrans.offsetMax.y);
 			rectTrans.localPosition = Vector3.zero;
-			rectTrans.pivot = new Vector2(0.5f, 0.5f);
+			//rectTrans.pivot = new Vector2(0.5f, 0.5f);
 
 			return obj;
 		}
 
-		public static T ScaleToParent2D<T>(this T comp)
+		public static T ScaleToParent2D<T>(this T comp, bool width = true, bool height = true)
 		{
-			RectTransform rectTrans = null;
+
 			if(comp is Component)
-				rectTrans = ((Component)(object)comp).GetComponent<RectTransform>();
-
-			if(rectTrans == null) return comp;
-
-			//var rectTrans = par.GetComponent<RectTransform>();
-			rectTrans.anchorMin = Vector2.zero;
-			rectTrans.anchorMax = Vector2.one;
-			rectTrans.offsetMax = Vector2.zero;
-			rectTrans.offsetMin = Vector2.zero;
-			rectTrans.localPosition = Vector3.zero;
-			rectTrans.pivot = new Vector2(0.5f, 0.5f);
+				((Component)(object)comp).gameObject.ScaleToParent2D(width: width, height: height);
 
 			return comp;
 		}
@@ -279,7 +291,7 @@ namespace FashionLine
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		public static IEnumerable<T> GetFuncCtrlOfType<T>()
+		public static IEnumerable<T> GetChaFuncCtrlOfType<T>()
 		{
 			foreach(var hnd in CharacterApi.RegisteredHandlers)
 				if(hnd.ControllerType == typeof(T))

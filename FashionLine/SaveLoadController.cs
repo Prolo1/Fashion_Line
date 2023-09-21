@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Runtime.Serialization.Formatters.Binary;
 
 using UnityEngine;
@@ -17,8 +16,10 @@ using MessagePack.Unity;
 using MessagePack;
 using ExtensibleSaveFormat;
 
+#if HONEY_API
 using CharaCustom;
 using Manager;
+#endif
 
 using static BepInEx.Logging.LogLevel;
 //using AIProject;
@@ -140,7 +141,7 @@ namespace FashionLine
 			catch(Exception e)
 			{
 				FashionLine_Core.Logger.Log(Error | Message, $"Could not load PluginData:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"{e.TargetSite}\n{e.StackTrace}\n");
+				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
 
@@ -159,19 +160,19 @@ namespace FashionLine
 				if(ctrl.fashionData == null)
 					throw new Exception("No FashionLine Data to be Saved 😮");
 				if(ctrl.fashionData.Count <= 0) return null;
-				
+
 				var dataLine = ctrl.fashionData.ToDictionary((k) => k.Key, (v) => v.Value.Clone());
 				foreach(var fashion in dataLine)
 					for(int a = 0; a < fashion.Value.extras.Count; ++a)
 						if(fashion.Value.extras[a] is Toggle)
 							fashion.Value.extras.Remove(fashion.Value.extras[a--]);
-
+				
 				data.data[DataKeys[((int)LoadDataType.Data)]] = LZ4MessagePackSerializer.Serialize(dataLine, CompositeResolver.Instance);
 			}
 			catch(Exception e)
 			{
 				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"{e.TargetSite}\n{e.StackTrace}\n");
+				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
 			ctrler.SetExtendedData(data);

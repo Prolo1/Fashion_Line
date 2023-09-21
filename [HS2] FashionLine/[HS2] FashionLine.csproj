@@ -61,6 +61,10 @@
       <HintPath>..\packages\ExtensibleSaveFormat.HoneySelect2.19.1.0\lib\net46\HS2_ExtensibleSaveFormat.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="HS2_OverlayMods, Version=6.1.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OverlayMods.HoneySelect2.6.1.2\lib\net46\HS2_OverlayMods.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="IL, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\IllusionLibs.HoneySelect2.IL.2020.5.29.4\lib\net46\IL.dll</HintPath>
       <Private>False</Private>

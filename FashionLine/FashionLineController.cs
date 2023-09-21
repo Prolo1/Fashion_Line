@@ -9,11 +9,16 @@ using KKAPI.Chara;
 using KKAPI.Maker;
 using ExtensibleSaveFormat;
 
+#if HONEY_API
 using AIChara;
+#else
+using ChaCustom;
+#endif
 using Manager;
 
 using static BepInEx.Logging.LogLevel;
-
+using KoiClothesOverlayX;
+using System.Reflection;
 
 namespace FashionLine
 {
@@ -35,9 +40,10 @@ namespace FashionLine
 				defultCoord = new ChaFileCoordinate();
 			}
 
-			defultCoord.LoadBytes
-				(ChaControl.nowCoordinate.SaveBytes(),
+			//save init outfit
+			defultCoord.LoadBytes(ChaControl.nowCoordinate.SaveBytes(),
 				ChaControl.nowCoordinate.loadVersion);
+
 
 			//load new data
 			pluginData = this.LoadExtData();
@@ -52,8 +58,11 @@ namespace FashionLine
 			try
 			{
 				if(!new ChaFileCoordinate().
-					LoadFile(new MemoryStream(data.data),
-					(int)Singleton<GameSystem>.Instance.language))
+					LoadFile(new MemoryStream(data.data)
+#if HONEY_API
+					, (int)Singleton<GameSystem>.Instance.language
+#endif
+					))
 					throw new Exception($"Was not able to read data from card [{name}] (Not a coordinate card)");
 
 				if(fashionData.ContainsKey(name))
@@ -68,7 +77,7 @@ namespace FashionLine
 			{
 				FashionLine_Core.Logger.Log(Message | Error,
 					$"Could not add [{name}] to FashionLine:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"{e.TargetSite} {e.StackTrace}\n");
+				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite} {e.StackTrace}\n");
 			}
 		}
 
@@ -119,42 +128,118 @@ namespace FashionLine
 		{
 			if(data == null) return;
 
+			if(FashionLine_Core.KoiOverlayModExists)
+			{
+				try
+				{
+
+					//	//There was no way around this
+					//	var ctrl = GetComponent<KoiClothesOverlayController>();
+					//	ctrl?.GetType().GetMethod("RemoveAllOverlays",
+					//		bindingAttr: BindingFlags.NonPublic | BindingFlags.Instance,
+					//		types: new Type[] { /*typeof(GameMode), typeof(bool)*/ },
+					//		binder: null, modifiers: null)
+					//		.Invoke(ctrl, new object[] { /*KoikatuAPI.GetCurrentGameMode(), false*/ });
+				}
+				catch(Exception e)
+				{
+					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
+				}
+			}
+
 			MemoryStream stream = new MemoryStream(data.data);
-			if(!ChaControl.nowCoordinate.LoadFile(stream, (int)Singleton<GameSystem>.Instance.language))
+			if(!ChaControl.nowCoordinate.LoadFile(stream
+#if HONEY_API
+				, (int)Singleton<GameSystem>.Instance.language
+#endif
+			))
 			{
 				FashionLine_Core.Logger.LogMessage($"Could not read card [{data.name}]");
-				return;
+				//return;
 			}
-			ChaControl.Reload(false, true, true, true, true);
+
+			ChaControl.Reload(false, true, true, true
+#if HONEY_API
+				, true
+#endif
+			);
+
+
 
 			if(MakerAPI.InsideMaker)
 			{
 				var mkBase = MakerAPI.GetMakerBase();
-				mkBase.ChangeAcsSlotName(-1);
+
 				mkBase.updateCustomUI = true;
+
+#if HONEY_API
+				mkBase.ChangeAcsSlotName(-1);
 				mkBase.forceUpdateAcsList = true;
+#endif
 			}
 
-			ChaControl.AssignCoordinate();
+			ChaControl.AssignCoordinate(
+#if KOI_API
+			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
+			//ChaFileDefine.CoordinateType.Plain
+#endif
+			);
 		}
 		public void WearDefaultCostume()
 		{
 			if(defultCoord == null) return;
 
+			if(FashionLine_Core.KoiOverlayModExists)
+			{
+				try
+				{
+
+					//	//There was no way around this
+					//	var ctrl = GetComponent<KoiClothesOverlayController>();
+					//	ctrl?.GetType().GetMethod("RemoveAllOverlays",
+					//		bindingAttr: BindingFlags.NonPublic | BindingFlags.Instance,
+					//		types: new Type[] { /*typeof(GameMode), typeof(bool)*/ },
+					//		binder: null, modifiers: null)
+					//		.Invoke(ctrl, new object[] { /*KoikatuAPI.GetCurrentGameMode(), false*/ });
+				}
+				catch(Exception e)
+				{
+					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
+				}
+			}
+
+#if HONEY_API
 			ChaControl.nowCoordinate.LoadBytes
 				(defultCoord.SaveBytes(),
 				defultCoord.loadVersion);
-			ChaControl.Reload(false, true, true, true, true);
+#else
+			ChaControl.nowCoordinate = defultCoord;
+#endif
+
+			ChaControl.Reload(false, true, true, true
+#if HONEY_API
+				, true
+#endif
+				);
 
 			if(MakerAPI.InsideMaker)
 			{
 				var mkBase = MakerAPI.GetMakerBase();
-				mkBase.ChangeAcsSlotName(-1);
+
 				mkBase.updateCustomUI = true;
+
+#if HONEY_API
+				mkBase.ChangeAcsSlotName(-1);
 				mkBase.forceUpdateAcsList = true;
+#endif
 			}
 
-			ChaControl.AssignCoordinate();
+			ChaControl.AssignCoordinate(
+#if KOI_API
+			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
+			//ChaFileDefine.CoordinateType.Plain
+#endif
+			);
 		}
 
 		#region Class Overrides

@@ -12,10 +12,13 @@ using KKAPI.Utilities;
 using KKAPI.Maker;
 using KKAPI.Maker.UI;
 
-using Illusion.Game;
-using CharaCustom;
+#if HONEY_API
 using AIChara;
-
+using CharaCustom;
+#else
+using ChaCustom;
+#endif
+using Illusion.Game;
 
 using static KKAPI.Maker.MakerAPI;
 using static FashionLine.FashionLine_Core;
@@ -24,7 +27,6 @@ using static FashionLine.FashionLine_Core;
 
 namespace FashionLine
 {
-
 	public class FashionLineGUI
 	{
 
@@ -61,7 +63,7 @@ namespace FashionLine
 #if HONEY_API
 				MakerCategory peram = MakerConstants.Parameter.Type;
 #else
-				MakerCategory peram = MakerConstants.Parameter.Character;
+				MakerCategory peram = MakerConstants.Parameter.QA;
 #endif
 				category = new MakerCategory(peram.CategoryName, subCategoryName, displayName: displayName);
 
@@ -118,19 +120,6 @@ namespace FashionLine
 			tglGroup = null;
 		}
 
-		public static void AddCoordinate(in CoordData coord)
-		{
-			var inst = FashionLine_Core.Instance;
-			inst.StartCoroutine(AddCoordinateCO(coord));
-
-		}
-
-		public static void RemoveCoordinate(in CoordData coord)
-		{
-			var inst = FashionLine_Core.Instance;
-			inst.StartCoroutine(RemoveCoordinateCO(coord));
-		}
-
 		static void AddFashionLineMenu(RegisterCustomControlsEvent e)
 		{
 			Cleanup();
@@ -139,50 +128,70 @@ namespace FashionLine
 			var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLineController>();
 
 			#region Init
+#if KOI_API
+			e.AddControl<MakerText>(new MakerText(displayName, category, inst));
+			e.AddControl(new MakerSeparator(category, inst));
+#endif
 			template = e.AddControl(new MakerImage(Texture2D.blackTexture, category, inst));
 			template.OnGUIExists((gui) =>
 			{
-				var scrollRect = gui.ControlObject.GetComponentInParent<ScrollRect>();
-				var layoutEle = gui.ControlObject.GetComponent<LayoutElement>();
-				tglGroup = gui.ControlObject.transform.parent.GetOrAddComponent<ToggleGroup>();
-				tglGroup.allowSwitchOff = true;
-				gui.ControlObject.SetActive(false);
-
-
-				var imgObj = gui.ControlObject.GetComponentInChildren<RawImage>().gameObject.ScaleToParent2D();
-
-				var tgl = imgObj.GetOrAddComponent<Toggle>();
-
-
-				tgl.group = tglGroup;
-
-
-
-				layoutEle.minWidth = 100;
-				layoutEle.minHeight = 165;
-				layoutEle.preferredWidth = -1;
-				layoutEle.preferredHeight = -1;
-
-				try
+				IEnumerator SetupCo()
 				{
-					GameObject.DestroyImmediate(scrollRect.content.GetComponent<LayoutGroup>());
+					yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null);
+					gui.ControlObject.SetActive(false);
+
+					var scrollRect = gui.ControlObject.GetComponentInParent<ScrollRect>();
+					var layoutEle = gui.ControlObject.GetOrAddComponent<LayoutElement>();
+					tglGroup = gui.ControlObject.transform.parent.GetOrAddComponent<ToggleGroup>();
+					tglGroup.allowSwitchOff = true;
+
+
+					var imgObj = gui.ControlObject.GetComponentInChildren<RawImage>();
+
+					var tgl = imgObj.GetOrAddComponent<Toggle>();
+
+
+					tgl.group = tglGroup;
+
+
+
+					layoutEle.minWidth = 100;
+					layoutEle.minHeight = 165;
+					layoutEle.preferredWidth = -1;
+					layoutEle.preferredHeight = -1;
+
+					//try
+					//{
+					//	GameObject.DestroyImmediate(scrollRect.content.GetComponent<LayoutGroup>());
+					//}
+					//catch { }
+
+					var gridPar = GameObject.Instantiate<GameObject>(new GameObject("Grid Layout Obj"), scrollRect.content).AddComponent<RectTransform>().gameObject;
+					gridLayout = gridPar.AddComponent<GridLayoutGroup>();
+					gui.ControlObject.transform.SetParent(gridPar.transform);
+					imgObj.ScaleToParent2D();
+					gridPar.ScaleToParent2D(height: false);
+
+					int space = 7;
+					gridLayout.constraintCount = 3;
+					gridLayout.spacing = new Vector2(space, space * .5f);
+					gridLayout.cellSize = new Vector2(scrollRect.content.GetComponent<RectTransform>().rect.width / (gridLayout.constraintCount + .5f), layoutEle.minHeight);
+					gridLayout.cellSize = new Vector2(gridLayout.cellSize.x, gridLayout.cellSize.x * 1.3f);
+					gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+					gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
+					gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
+					gridLayout.childAlignment = TextAnchor.MiddleCenter;
+
+					//	gridLayout.
+
+					yield break;
 				}
-				catch { }
-				gridLayout = scrollRect.content.gameObject.AddComponent<GridLayoutGroup>();
 
-
-
-				int space = 7;
-				gridLayout.constraintCount = 3;
-				gridLayout.spacing = new Vector2(space, space * .5f);
-				gridLayout.cellSize = new Vector2(layoutEle.transform.parent.GetComponent<RectTransform>().rect.width / (gridLayout.constraintCount + .5f), layoutEle.minHeight);
-				gridLayout.cellSize = new Vector2(gridLayout.cellSize.x, gridLayout.cellSize.x * 1.3f);
-				gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-				gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-				gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
-				gridLayout.childAlignment = TextAnchor.MiddleCenter;
+				inst.StartCoroutine(SetupCo());
 			});
 			#endregion
+
+
 
 			((MakerButton)e.AddControl(new MakerButton("Add", category, inst))
 				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true))))
@@ -221,6 +230,19 @@ namespace FashionLine
 				});
 		}
 
+		public static void AddCoordinate(in CoordData coord)
+		{
+			var inst = FashionLine_Core.Instance;
+			inst.StartCoroutine(AddCoordinateCO(coord));
+
+		}
+
+		public static void RemoveCoordinate(in CoordData coord)
+		{
+			var inst = FashionLine_Core.Instance;
+			inst.StartCoroutine(RemoveCoordinateCO(coord));
+		}
+
 		#region Coroutine Helpers
 		static IEnumerator AddToBottomGUILayoutCO(BaseGuiEntry gui, bool horizontal = false, float horiScale = -1, bool newVertLine = false)
 		{
@@ -243,7 +265,7 @@ namespace FashionLine
 #if HONEY_API
 			vlg.childAlignment = TextAnchor.UpperCenter;
 #else
-			vlg.childAlignment = TextAnchor.LowerCenter;
+			vlg.childAlignment = TextAnchor.UpperCenter;
 #endif
 			var pad = 10;//(int)cfg.unknownTest.Value;//10
 			vlg.padding = new RectOffset(pad, pad + 5, 0, 0);
@@ -255,16 +277,16 @@ namespace FashionLine
 
 			//This fixes the KOI_API rendering issue & enables scrolling over viewport (not elements tho)
 #if KOI_API
-				scrollRect.GetComponent<Image>().sprite = scrollRect.content.GetComponent<Image>()?.sprite;
-				scrollRect.GetComponent<Image>().color = (Color)scrollRect.content.GetComponent<Image>()?.color;
+			scrollRect.GetComponent<Image>().sprite = scrollRect.content.GetComponent<Image>()?.sprite;
+			scrollRect.GetComponent<Image>().color = (Color)scrollRect.content.GetComponent<Image>()?.color;
 
 
-				scrollRect.GetComponent<Image>().enabled = true;
-				scrollRect.GetComponent<Image>().raycastTarget = true;
-				var img = scrollRect.content.GetComponent<Image>();
-				if(!img)
-					img = scrollRect.viewport.GetComponent<Image>();
-				img.enabled = false;
+			scrollRect.GetComponent<Image>().enabled = true;
+			scrollRect.GetComponent<Image>().raycastTarget = true;
+			var img = scrollRect.content.GetComponent<Image>();
+			if(!img)
+				img = scrollRect.viewport.GetComponent<Image>();
+			img.enabled = false;
 #endif
 
 			//Setup LayoutElements 
@@ -272,12 +294,11 @@ namespace FashionLine
 			scrollRect.content.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
 			var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
 			viewLE.minWidth = -1;
-			viewLE.minHeight = scrollRect.transform.GetComponent<RectTransform>().rect.height * .75f;
-			//viewLE.minHeight = -1;
-
-			viewLE.flexibleHeight = -1;
 			viewLE.flexibleWidth = -1;
-
+			//viewLE.minHeight = -1;
+			float vHeight = scrollRect.rectTransform.rect.height;
+			viewLE.minHeight = vHeight * .75f;
+			//	viewLE.flexibleHeight = vHeight * .25f;
 
 
 			//Create  LayoutElement
@@ -351,7 +372,7 @@ namespace FashionLine
 #if HONEY_API
 				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1;
 #else
-				horizontal && horiScale > 0 ? viewLE.minWidth * horiScale: -1 ;
+				horizontal && horiScale > 0 ? viewLE.minWidth * horiScale : -1;
 #endif
 			//thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
 
@@ -374,7 +395,7 @@ namespace FashionLine
 			coordinate.extras.Add(tgl);
 
 			tgl.targetGraphic = img;
-			tgl.colors = new ColorBlock()
+			var colours = tgl.colors = new ColorBlock()
 			{
 				normalColor = Color.white,
 				highlightedColor = new Color(1, 1, 1, .75f),
@@ -385,14 +406,26 @@ namespace FashionLine
 
 			tgl.onValueChanged.AddListener((val) =>
 			{
+#if KKS
+				colours.selectedColor = Color.white;
+#else
 				img.color = Color.white;
+#endif
 				currentCoord = null;
 
 				if(!val) return;
 
+#if KKS
+				colours.selectedColor = Color.green - new Color(0, 0, 0, .15f);
+#else
 				img.color = Color.green - new Color(0, 0, 0, .15f);
+#endif
+
 				currentCoord = coordinate;
-				//img.dirty
+
+#if !KKS
+				tgl.InstantClearState();
+#endif
 			});
 
 			comp.SetActive(true);
@@ -412,6 +445,7 @@ namespace FashionLine
 
 			yield break;
 		}
+
 
 		#endregion
 
@@ -451,7 +485,10 @@ namespace FashionLine
 					FashionLine_Core.Logger.LogDebug($"texture path: {Path.Combine(Path.GetDirectoryName(texPath), Path.GetFileName(texPath))}");
 				}
 
-				if(string.IsNullOrEmpty(texPath)) continue;
+				if(texPath.IsNullOrEmpty())
+				{
+					continue;
+				}
 
 				//	var directory = Path.GetDirectoryName(texPath).MakeDirPath();
 				var filename = texPath.Substring(texPath.LastIndexOf('/') + 1).MakeDirPath();//not sure why this happens on hs2?
@@ -483,7 +520,7 @@ namespace FashionLine
 			TargetDirectory.MakeDirPath("/", "\\"),
 			FileFilter,
 			FileExt,
-			OpenFileDialog.MultiFileFlags | OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT & ~OpenFileDialog.OpenSaveFileDialgueFlags.OFN_NOCHANGEDIR,
+			OpenFileDialog.MultiFileFlags,
 			owner: ForeGrounder.GetForgroundHandeler());
 
 			var path = paths?.Attempt((s) => s.IsNullOrWhiteSpace() ?
@@ -497,6 +534,4 @@ namespace FashionLine
 		#endregion
 
 	}
-
 }
-
