@@ -17,8 +17,6 @@ using ChaCustom;
 using Manager;
 
 using static BepInEx.Logging.LogLevel;
-using KoiClothesOverlayX;
-using System.Reflection;
 
 namespace FashionLine
 {
@@ -27,6 +25,7 @@ namespace FashionLine
 		internal Dictionary<string, CoordData> fashionData = new Dictionary<string, CoordData>();
 		private ChaFileCoordinate defultCoord = null;
 		private PluginData pluginData = null;
+		CoordData current = null;
 
 		public void OnCharaReload(GameMode currentGameMode)
 		{
@@ -124,9 +123,38 @@ namespace FashionLine
 			}
 		}
 
-		public void WearCostume(CoordData data)
+		public void NextInLine()
+		{
+			var line = fashionData.ToList();
+
+			if(!fashionData.ContainsValue(current)) return;
+
+			var index = line.FindIndex((l) => l.Value == current) + 1;
+			index %= line.Count;
+
+			if(line.InRange(index))
+				WearCostume(line[index].Value);
+		}
+
+		public void LastInLine()
+		{
+			var line = fashionData.ToList();
+
+			if(!fashionData.ContainsValue(current)) return;
+			var index = line.FindIndex((l) => l.Value == current) - 1;
+
+			index = index < -1 ? 0 : index;
+			index = index < 0 ? line.Count - 1 : index;
+
+			if(line.InRange(index))
+				WearCostume(line[index].Value);
+		}
+
+		public void WearCostume(in CoordData data)
 		{
 			if(data == null) return;
+
+			current = data;
 
 			if(FashionLine_Core.KoiOverlayModExists)
 			{
@@ -145,6 +173,18 @@ namespace FashionLine
 				{
 					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
 				}
+			}
+
+			if(MakerAPI.InsideMaker)
+			{
+				var mkBase = MakerAPI.GetMakerBase();
+
+				mkBase.updateCustomUI = true;
+
+#if HONEY_API
+				mkBase.ChangeAcsSlotName(-1);
+				mkBase.forceUpdateAcsList = true;
+#endif
 			}
 
 			MemoryStream stream = new MemoryStream(data.data);
@@ -166,18 +206,6 @@ namespace FashionLine
 
 
 
-			if(MakerAPI.InsideMaker)
-			{
-				var mkBase = MakerAPI.GetMakerBase();
-
-				mkBase.updateCustomUI = true;
-
-#if HONEY_API
-				mkBase.ChangeAcsSlotName(-1);
-				mkBase.forceUpdateAcsList = true;
-#endif
-			}
-
 			ChaControl.AssignCoordinate(
 #if KOI_API
 			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
@@ -185,6 +213,7 @@ namespace FashionLine
 #endif
 			);
 		}
+
 		public void WearDefaultCostume()
 		{
 			if(defultCoord == null) return;
@@ -208,6 +237,22 @@ namespace FashionLine
 				}
 			}
 
+
+
+
+			if(MakerAPI.InsideMaker)
+			{
+				var mkBase = MakerAPI.GetMakerBase();
+
+				mkBase.updateCustomUI = true;
+
+#if HONEY_API
+				mkBase.ChangeAcsSlotName(-1);
+				mkBase.forceUpdateAcsList = true;
+#endif
+			}
+
+
 #if HONEY_API
 			ChaControl.nowCoordinate.LoadBytes
 				(defultCoord.SaveBytes(),
@@ -221,18 +266,6 @@ namespace FashionLine
 				, true
 #endif
 				);
-
-			if(MakerAPI.InsideMaker)
-			{
-				var mkBase = MakerAPI.GetMakerBase();
-
-				mkBase.updateCustomUI = true;
-
-#if HONEY_API
-				mkBase.ChangeAcsSlotName(-1);
-				mkBase.forceUpdateAcsList = true;
-#endif
-			}
 
 			ChaControl.AssignCoordinate(
 #if KOI_API

@@ -20,6 +20,8 @@ using BepInEx.Configuration;
 using ExtensibleSaveFormat;
 using KoiClothesOverlayX;
 
+using static FashionLine.FashionLine_Util;
+
 namespace FashionLine
 {
 	// Specify this as a plugin that gets loaded by BepInEx
@@ -106,11 +108,31 @@ namespace FashionLine
 			//Advanced
 			{
 				cfg.debug = Config.Bind(adv, "Log Debug", false, new ConfigDescription("", null,
-				new ConfigurationManagerAttributes() { Order = index-- , IsAdvanced = true })).ConfigDefaulter();
+				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })).ConfigDefaulter();
 			}
 
+			IEnumerator KeyUpdate()
+			{
+
+				yield return new WaitWhile(() =>
+				{
+					var list = GetAllChaFuncCtrlOfType<FashionLineController>();
+					if(cfg.nextInLine.Value.IsDown())
+						foreach(var ctrl in list)
+							ctrl.NextInLine();
+
+					if(cfg.prevInLine.Value.IsDown())
+						foreach(var ctrl in list)
+							ctrl.LastInLine();
+					
+					return true;
+				});
+			}
+
+			StartCoroutine(KeyUpdate());
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
 			FashionLineGUI.Init();
+
 		}
 	}
 
@@ -142,6 +164,10 @@ namespace FashionLine
 			data?.LoadTexture(TextureFormat.RGBA32) ?? Texture2D.blackTexture :
 			File.ReadAllBytes(path)?.LoadTexture(TextureFormat.RGBA32) ??
 			Texture2D.blackTexture;
+
+		public static bool InRange<T>(this IEnumerable<T> list, int index)
+		=> index >= 0 && index < list.Count();
+
 
 		/// <summary>
 		/// 
@@ -291,7 +317,7 @@ namespace FashionLine
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		public static IEnumerable<T> GetChaFuncCtrlOfType<T>()
+		public static IEnumerable<T> GetAllChaFuncCtrlOfType<T>()
 		{
 			foreach(var hnd in CharacterApi.RegisteredHandlers)
 				if(hnd.ControllerType == typeof(T))
