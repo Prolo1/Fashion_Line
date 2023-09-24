@@ -29,7 +29,6 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 * [Illusion API](https://github.com/IllusionMods/IllusionModdingAPI)
 * [BepisPlugins](https://github.com/IllusionMods/BepisPlugins)
 
-
 ## Setup
 
 1. Download [Better Repack](https://dl.betterrepack.com/public/) or add all linked mods to your game
