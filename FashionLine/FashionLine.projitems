@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)FashionLine.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FashionLineController.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FashionLineGUI.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SaveLoadController.cs" />
   </ItemGroup>
 </Project>

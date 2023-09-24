@@ -20,7 +20,7 @@
 
 ## Description
 
-
+Adds the ability to save coordinate cards to a character card and use them (Why was this not a thing?). This currently doesn't work in game right now but it will (it only works in Maker).  
 
 ## Linked Mods
 
@@ -29,31 +29,34 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 * [Illusion API](https://github.com/IllusionMods/IllusionModdingAPI)
 * [BepisPlugins](https://github.com/IllusionMods/BepisPlugins)
 
-
 ## Setup
 
 1. Download [Better Repack](https://dl.betterrepack.com/public/) or add all linked mods to your game
-2. Download the latest update of [this mod](https://github.com/Prolo1/Character-Morpher/releases/latest/) for your game
+2. Download the latest update of [this mod](https://github.com/Prolo1/) for your game
 3. Extract the zip file
 4. Place the extracted "BepinEx" folder into the main directory of your game (where the game .exe is)
 5. Run
 
 ## Features
 
+* Stores Coordinate cards in Character card
+* Put on costumes
 * 
 
 ## Planned
 
-* 
+* Have Costumes work in Game
 
 ## How To Use
 
-1. 
+1. Go into the character maker
+2. open Character settings menu from the top
+3. open the FashionLine mod menu
+4. Once there, press the add button to add Coordinate cards to the current character
+5. saving the character will save all the cloths attached
+69. Enjoy!
 
 ## Examples
-
-![example gif](https://github.com/Prolo1/Example-images/blob/main/example%20chara%20morph%20v2.gif?raw=true)
-![HS2 image](https://github.com/Prolo1/Example-images/blob/main/Screenshot%202022-03-29%20191817.png?raw=true)
 
 ## Known Issues
 

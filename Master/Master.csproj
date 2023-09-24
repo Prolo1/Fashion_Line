@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{8A272414-08C8-415F-A0F3-64F5143A8B9D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Master</RootNamespace>
+    <AssemblyName>Master</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\Builds\Master\BepInEx\plugins\Prolo\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\Builds\Master\BepInEx\plugins\Prolo\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\[AI] FashionLine\[AI] FashionLine.csproj">
+      <Project>{481fdb8a-097f-4325-a292-34f91b672656}</Project>
+      <Name>[AI] FashionLine</Name>
+      <Aliases>AI</Aliases>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\[HS2] FashionLine\[HS2] FashionLine.csproj">
+      <Project>{29f940df-35a6-4c72-96f9-0de421d48358}</Project>
+      <Name>[HS2] FashionLine</Name>
+      <Aliases>HS2</Aliases>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\[KKS] FashionLine\[KKS] FashionLine.csproj">
+      <Project>{53781ad0-c1db-4b36-a8cc-b06052e634ba}</Project>
+      <Name>[KKS] FashionLine</Name>
+      <Aliases>KKS</Aliases>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>powershell "&amp; '$(SolutionDir)Post-Builder.ps1' '$(TargetPath)'  '$(SolutionDir)zipper master.bat' '$(TargetDir)..\..\..\..\Master.zip' '$(TargetDir)..\..\..\..\' '$(SolutionDir)Readme.md'"</PostBuildEvent>
+  </PropertyGroup>
+</Project>
