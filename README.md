@@ -20,7 +20,7 @@
 
 ## Description
 
-Have you wondered why Illusion never allowed you to save coordinates to a character card in AI/HS2? Me neither ¯\\_(ツ)_/¯ so I made this mod. save as many costumes as you want and share them with others w/o needing to Make like 10 different cards 😅.
+Have you wondered why Illusion never allowed you to save coordinates to a character card in AI/HS2? Me neither ¯\\_(ツ)_/¯ so I made this mod. save as many costumes as you want and share them with others w/o needing to Make like 10 different cards 😅 (Note: The other person needs this mod as well for anything to happen). 
 
 ## Linked Mods
 
