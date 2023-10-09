@@ -11,7 +11,6 @@ using BepInEx;
 using KKAPI.Utilities;
 using KKAPI.Maker;
 using KKAPI.Maker.UI;
-
 #if HONEY_API
 using AIChara;
 using CharaCustom;
@@ -22,16 +21,18 @@ using Illusion.Game;
 
 using static KKAPI.Maker.MakerAPI;
 using static FashionLine.FashionLine_Core;
+using UnityEngine.Events;
 //using static FashionLine.FashionLine_Util;
 //using static Illusion.Game.Utils;
 
 namespace FashionLine
 {
-	public class FashionLineGUI
+	public class FashionLine_GUI
 	{
 
 		#region Data
 		private static MakerCategory category = null;
+		private static MakerCategory category2 = null;
 		public static readonly string subCategoryName = "FashionLine";
 		public static readonly string displayName = "Fashion Line";
 
@@ -45,30 +46,39 @@ namespace FashionLine
 		public static CvsB_ShapeBreast boobCustom { get; private set; } = null;
 		public static CvsB_ShapeWhole bodyCustom { get; private set; } = null;
 		public static CvsF_ShapeWhole faceCustom { get; private set; } = null;
+		public static CvsC_ClothesSave clothesSave { get; private set; } = null;
+		public static CvsC_ClothesInput clothesInput { get; private set; } = null;
 #else
 		public static CvsChara charaCustom { get; private set; } = null;
 		public static CvsBreast boobCustom { get; private set; } = null;
 		public static CvsBodyShapeAll bodyCustom { get; private set; } = null;
 		public static CvsFaceShapeAll faceCustom { get; private set; } = null;
+		public static CvsClothes clothesSave { get; private set; } = null;
 #endif
 
 		#endregion
 
 		public static void Init()
 		{
+
 			RegisterCustomSubCategories += (s, e) =>
-			{
-				//Create custom category 
+		   {
+			   //Create custom category 
 
 #if HONEY_API
-				MakerCategory peram = MakerConstants.Parameter.Type;
+			   MakerCategory peram = MakerConstants.Parameter.Type;
 #else
 				MakerCategory peram = MakerConstants.Parameter.QA;
 #endif
-				category = new MakerCategory(peram.CategoryName, subCategoryName, displayName: displayName);
 
-				e.AddSubCategory(category);
-			};
+
+
+
+			   category = new MakerCategory(peram.CategoryName, subCategoryName, displayName: displayName);
+			   // category2 = new MakerCategory(MakerConstants.Clothes.CategoryName, "Save / Delete");
+
+			   e.AddSubCategory(category);
+		   };
 			MakerBaseLoaded += (s, e) => { AddFashionLineMenu(e); };
 			MakerFinishedLoading += (s, e) =>
 			{
@@ -85,6 +95,8 @@ namespace FashionLine
 				faceCustom = (CvsF_ShapeWhole)allCvs.FirstOrNull((p) => p.cvsBase is CvsF_ShapeWhole)?.cvsBase;
 				boobCustom = (CvsB_ShapeBreast)allCvs.FirstOrNull((p) => p.cvsBase is CvsB_ShapeBreast)?.cvsBase;
 				charaCustom = (CvsO_Type)allCvs.FirstOrNull((p) => p.cvsBase is CvsO_Type)?.cvsBase;
+				clothesSave = (CvsC_ClothesSave)(allCvs.FirstOrNull((p) => p.cvsBase is CvsC_ClothesSave)?.cvsBase);
+				//	clothesInput = (CvsC_ClothesInput)(allCvs.FirstOrNull((p) => p.cvsBase is CvsC_ClothesInput)?.cvsBase);
 
 
 #else
@@ -95,11 +107,110 @@ namespace FashionLine
 				charaCustom = (CvsChara)Resources.FindObjectsOfTypeAll(typeof(CvsChara))[0];
 #endif
 
-#if HONEY_API
-				//Force the floating settings window to show up
 
-				var btn = allCvs?.FirstOrNull(p => p?.btnItem?.gameObject?.GetTextFromTextComponent() == displayName).btnItem;
-				btn?.onClick?.AddListener(() => GetMakerBase().drawMenu.ChangeMenuFunc());
+#if HONEY_API
+				//add new button to coordinate save screen
+				{
+					var orig = clothesSave.clothesLoadWin.button[1];
+					var par = orig.transform.parent;
+
+					var btn = GameObject.Instantiate(orig.gameObject, par).GetComponent<Button>();
+					btn.GetComponent<RectTransform>().anchoredPosition =
+					btn.GetComponent<RectTransform>().anchoredPosition + new Vector2(0, -80);
+					btn.SetTextFromTextComponent("Save & Add to FashionLine");
+					btn.onClick.RemoveAllListeners();
+
+
+					bool flag = false;
+					btn.onClick.AddListener(() =>
+					{
+						FashionLine_Core.Logger.LogInfo("clicked button");
+						orig.onClick.Invoke();
+
+						UnityAction tmp = () =>
+						{
+							IEnumerator func()
+							{
+								FileStream stream = null;
+
+								for(int a = 0; a < 10; ++a)
+									yield return null;
+
+								try
+								{
+									stream = new FileStream(LastCoordSaveLocation, FileMode.Open, FileAccess.Read);
+
+									MakerAPI.GetCharacterControl()
+									.GetComponent<FashionLineController>()
+									.AddFashion(
+									MakerAPI.GetCharacterControl().nowCoordinate.coordinateName,
+									new CoordData()
+									{
+										data = stream.ReadAllBytes(),
+										name = MakerAPI.GetCharacterControl().
+										nowCoordinate.coordinateName
+									});
+
+									stream.Close();
+									stream.Dispose();
+								}
+								catch(Exception ex)
+								{
+									stream?.Close();
+									stream?.Dispose();
+
+									FashionLine_Core.Logger.LogError(ex);
+								}
+								
+								FashionLine_Core.Logger.LogInfo("ran new listener");
+								flag = true;
+								
+								yield break;
+							}
+						
+							Instance.StartCoroutine(func());
+						};
+
+						UnityAction tmp2 = () =>
+						{
+
+							flag = true;
+							FashionLine_Core.Logger.LogInfo("ran new listener back");
+						};
+
+						Instance.StartCoroutine(Killme());
+						IEnumerator Killme()
+						{
+							yield return new WaitUntil(() => flag);
+
+							clothesSave.clothesNameInput.
+							btnEntry.onClick.RemoveListener(tmp);
+							clothesSave.clothesNameInput.
+							btnBack.onClick.RemoveListener(tmp2);
+
+							FashionLine_Core.Logger.LogInfo("removed added listener");
+
+							yield break;
+						}
+
+						clothesSave.clothesNameInput.
+						btnEntry.onClick.AddListener(tmp);
+						clothesSave.clothesNameInput.
+						btnBack.onClick.AddListener(tmp2);
+
+					});
+
+					var HLGroup = par.gameObject.GetComponent<HorizontalLayoutGroup>();
+					//HLGroup.CalculateLayoutInputHorizontal();
+					//HLGroup.CalculateLayoutInputVertical();
+					HLGroup.SetDirty();
+				}
+
+				//Force the floating settings window to show up
+				{
+					var btn = allCvs?.FirstOrNull(p => p?.btnItem?.gameObject?.GetTextFromTextComponent() == displayName).btnItem;
+					btn?.onClick?.AddListener(() => GetMakerBase().drawMenu.ChangeMenuFunc());
+				}
 #endif
 			};
 			MakerExiting += (s, e) => { Cleanup(); };
@@ -221,7 +332,7 @@ namespace FashionLine
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
-			((MakerButton)e.AddControl(new MakerButton("Wear Drfault Costume", category, inst))
+			((MakerButton)e.AddControl(new MakerButton("Wear Default Costume", category, inst))
 				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false))))
 				.OnClick.AddListener(() =>
 				{
@@ -455,9 +566,9 @@ namespace FashionLine
 		public const string FileExt = ".png";
 		public const string FileFilter = "Coordinate Images (*.png)|*.png";
 
-		private static string _defaultOverlayDirectory { get => (Directory.GetCurrentDirectory() + "/UserData/coordinate/").MakeDirPath(); }
+		public static string DefaultCoordDirectory { get => (Directory.GetCurrentDirectory() + "/UserData/coordinate/").MakeDirPath(); }
 
-		public static string TargetDirectory { get => Directory.Exists(cfg.lastCoordDir.Value) && !cfg.lastCoordDir.Value.IsNullOrWhiteSpace() ? cfg.lastCoordDir.Value : _defaultOverlayDirectory; }
+		public static string TargetDirectory { get => Directory.Exists(cfg.lastCoordDir.Value) && !cfg.lastCoordDir.Value.IsNullOrWhiteSpace() ? cfg.lastCoordDir.Value : DefaultCoordDirectory; }
 
 		#endregion
 

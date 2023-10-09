@@ -57,8 +57,16 @@
       <HintPath>..\packages\IllusionModdingAPI.KKSAPI.1.35.0\lib\net46\KKSAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KKS_BrowserFolders">
+      <HintPath>..\Misc. Plugins\KKS\BepInEx\plugins\KKS_BrowserFolders.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KKS_ExtensibleSaveFormat, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ExtensibleSaveFormat.KoikatsuSunshine.19.1.0\lib\net46\KKS_ExtensibleSaveFormat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KKS_MaterialEditor">
+      <HintPath>..\Misc. Plugins\KKS\BepInEx\plugins\KKS_Plugins\KKS_MaterialEditor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KKS_OverlayMods, Version=6.1.2.0, Culture=neutral, processorArchitecture=MSIL">

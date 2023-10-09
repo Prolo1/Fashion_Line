@@ -22,6 +22,13 @@ using KoiClothesOverlayX;
 
 using static FashionLine.FashionLine_Util;
 
+using KK_Plugins.MaterialEditor;
+#if HONEY_API
+using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
+#elif KKS
+using MyBrowserFolders = BrowserFolders.KKS_BrowserFolders;
+#endif 
+
 namespace FashionLine
 {
 	// Specify this as a plugin that gets loaded by BepInEx
@@ -32,7 +39,15 @@ namespace FashionLine
 	// Tell BepInEx that we need ExtendedSave to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(ExtensibleSaveFormat.ExtendedSave.GUID, ExtensibleSaveFormat.ExtendedSave.Version)]
-	// Tell BepInEx that we need Overlay to run, and that we need the latest version of it.
+
+	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
+	// Check documentation of KoikatuAPI.VersionConst for more info.
+	[BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency)]
+	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
+	// Check documentation of KoikatuAPI.VersionConst for more info.
+	[BepInDependency(MyBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
+
+	// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency)]
 	public partial class FashionLine_Core : BaseUnityPlugin
@@ -40,12 +55,17 @@ namespace FashionLine
 		public static FashionLine_Core Instance;
 		public const string ModName = "Fashion Line";
 		public const string GUID = "prolo.fashionline";//never change this
-		public const string Description = "Adds the ability to save coordinate cards to a character card and use them (Why was this not a thing?)";
+		public const string Description =
+			"Adds the ability to save coordinate cards to a " +
+			"character card and use them (Why was this not a thing?)";
 		public const string Version = "0.1.0";
 
 		internal static new ManualLogSource Logger;
 
-		internal static bool KoiOverlayModExists = false;
+		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
+		internal static DependencyInfo<MyBrowserFolders> BrowserfolderDependency;
+		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
+
 		public static FashionLineConfig cfg;
 		public struct FashionLineConfig
 		{
@@ -69,15 +89,24 @@ namespace FashionLine
 			Logger = base.Logger;
 			ForeGrounder.SetCurrentForground();
 
-			//Info.Metadata;
-			var data = (KoiClothesOverlayMgr)FindObjectOfType(typeof(KoiClothesOverlayMgr));
-			KoiOverlayModExists = data == null ? false :
-			data.Info.Metadata.Version >= new Version(KoiClothesOverlayMgr.Version);
+			KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
+			BrowserfolderDependency = new DependencyInfo<MyBrowserFolders>(new Version(MyBrowserFolders.Version));
+			MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
 
-			if(KoiOverlayModExists)
+			if(KoiOverlayDependency.Exists)
 				Logger.LogInfo("Koi Overlay Mod Exists!!!!!!!!");
 			else
 				Logger.LogInfo("Koi Overlay Mod Does Not Exist!!!!!!!!");
+
+			if(BrowserfolderDependency.Exists)
+				Logger.LogInfo("Browser Mod Exists!!!!!!!!");
+			else
+				Logger.LogInfo("Browser Mod Does Not Exist!!!!!!!!");
+
+			if(MatEditerDependency.Exists)
+				Logger.LogInfo("Mat Editor Mod Exists!!!!!!!!");
+			else
+				Logger.LogInfo("Mat Editor Mod Does Not Exist!!!!!!!!");
 
 			string main = "";
 			string adv = "Advanced";
@@ -124,16 +153,51 @@ namespace FashionLine
 					if(cfg.prevInLine.Value.IsDown())
 						foreach(var ctrl in list)
 							ctrl.LastInLine();
-					
+
 					return true;
 				});
 			}
 
 			StartCoroutine(KeyUpdate());
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
-			FashionLineGUI.Init();
+			Hooks.Init();
+			FashionLine_GUI.Init();
 
 		}
+	}
+
+	public class DependencyInfo<T> where T : BaseUnityPlugin
+	{
+		public DependencyInfo(Version targetVer = null)
+		{
+			plugin = (T)GameObject.FindObjectOfType(typeof(T));
+			Exists = plugin != null;
+			TargetVersion = targetVer ?? new Version();
+			HasGreaterTargetVersion = (CurrentVersion = plugin?.Info.Metadata.Version ?? CurrentVersion) >= TargetVersion;
+
+		}
+
+		/// <summary>
+		/// plugin reference
+		/// </summary>
+		public readonly T plugin = null;
+		/// <summary>
+		/// does the mod exist
+		/// </summary>
+		public bool Exists { get; } = false;
+		/// <summary>
+		/// Current version matches or exceeds the target mod version
+		/// </summary>
+		public bool HasGreaterTargetVersion { get; } = false;
+		/// <summary>
+		/// version this mod expects
+		/// </summary>
+		public Version TargetVersion { get; } = new Version();
+		/// <summary>
+		/// version that is actually downloaded in the game
+		/// </summary>
+		public Version CurrentVersion { get; } = new Version();
+
 	}
 
 	public static class FashionLine_Util
@@ -243,12 +307,9 @@ namespace FashionLine
 			return obj;
 		}
 
-		public static T ScaleToParent2D<T>(this T comp, bool width = true, bool height = true)
+		public static T ScaleToParent2D<T>(this T comp, bool width = true, bool height = true) where T : Component
 		{
-
-			if(comp is Component)
-				((Component)(object)comp).gameObject.ScaleToParent2D(width: width, height: height);
-
+			comp.gameObject.ScaleToParent2D(width: width, height: height);
 			return comp;
 		}
 
@@ -259,7 +320,8 @@ namespace FashionLine
 		public static IEnumerable<T> GetComponentsInChildren<T>(this Component obj, int depth) =>
 			obj.gameObject.GetComponentsInChildren<T>(depth);
 
-		public static int HierarchyLevelIndex(this Transform obj) => obj.parent ? 1 + obj.parent.HierarchyLevelIndex() : 0;
+		public static int HierarchyLevelIndex(this Transform obj) => obj.parent ? obj.parent.HierarchyLevelIndex() + 1 : 0;
+		public static int HierarchyLevelIndex(this GameObject obj) => obj.transform.HierarchyLevelIndex();
 
 		/// <summary>
 		/// gets the text of the first Text or TMP_Text component in a game object or it's children.
@@ -270,6 +332,28 @@ namespace FashionLine
 		public static string GetTextFromTextComponent(this GameObject obj) =>
 			obj?.GetComponentInChildren<TMP_Text>()?.text ??
 			obj?.GetComponentInChildren<Text>()?.text ?? null;
+		/// <summary>
+		/// sets the text of the first Text or TMP_Text component in a game object or it's children.
+		///  If no component does nothing. 
+		/// </summary>
+		/// <param name="obj"></param>
+		/// <returns></returns>
+		public static void SetTextFromTextComponent(this GameObject obj, string txt)
+		{
+			Component comp;
+			if(comp = obj?.GetComponentInChildren<TMP_Text>())
+				((TMP_Text)comp).text = (txt);
+			else if(comp = obj?.GetComponentInChildren<Text>())
+				((Text)comp).text = (txt);
+		}
+		public static void SetTextFromTextComponent(this Component obj, string txt)
+		{
+			Component comp;
+			if(comp = obj?.GetComponentInChildren<TMP_Text>())
+				((TMP_Text)comp).text = (txt);
+			else if(comp = obj?.GetComponentInChildren<Text>())
+				((Text)comp).text = (txt);
+		}
 
 		/// <summary>
 		/// Defaults the ConfigEntry on game launch
@@ -317,7 +401,7 @@ namespace FashionLine
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		public static IEnumerable<T> GetAllChaFuncCtrlOfType<T>()
+		public static IEnumerable<T> GetAllChaFuncCtrlOfType<T>() where T : CharaCustomFunctionController
 		{
 			foreach(var hnd in CharacterApi.RegisteredHandlers)
 				if(hnd.ControllerType == typeof(T))

@@ -57,8 +57,16 @@
       <HintPath>..\packages\IllusionModdingAPI.HS2API.1.35.0\lib\net46\HS2API.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="HS2_BrowserFolders">
+      <HintPath>..\Misc. Plugins\HS2\BepInEx\plugins\HS2_BrowserFolders.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="HS2_ExtensibleSaveFormat, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ExtensibleSaveFormat.HoneySelect2.19.1.0\lib\net46\HS2_ExtensibleSaveFormat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="HS2_MaterialEditor">
+      <HintPath>..\Misc. Plugins\HS2\BepInEx\plugins\HS2_Plugins\HS2_MaterialEditor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="HS2_OverlayMods, Version=6.1.2.0, Culture=neutral, processorArchitecture=MSIL">

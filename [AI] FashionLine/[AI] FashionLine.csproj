@@ -55,8 +55,16 @@
       <HintPath>..\packages\IllusionModdingAPI.AIAPI.1.35.0\lib\net46\AIAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="AI_BrowserFolders">
+      <HintPath>..\Misc. Plugins\AI\BepInEx\plugins\AI_BrowserFolders.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="AI_ExtensibleSaveFormat, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ExtensibleSaveFormat.AIGirl.19.1.0\lib\net46\AI_ExtensibleSaveFormat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AI_MaterialEditor">
+      <HintPath>..\Misc. Plugins\AI\BepInEx\plugins\AI_Plugins\AI_MaterialEditor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="AI_OverlayMods, Version=6.1.2.0, Culture=neutral, processorArchitecture=MSIL">

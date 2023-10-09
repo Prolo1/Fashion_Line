@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 using KKAPI;
 using KKAPI.Chara;
@@ -17,6 +18,21 @@ using ChaCustom;
 using Manager;
 
 using static BepInEx.Logging.LogLevel;
+using static FashionLine.FashionLine_Util;
+using KKAPI.Utilities;
+using BrowserFolders;
+using KK_Plugins.MaterialEditor;
+using ADV.Commands.Object;
+using System.Runtime.InteropServices.ComTypes;
+using KoiClothesOverlayX;
+#if HONEY_API
+using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
+using System.Reflection;
+
+#elif KKS
+using MyBrowserFolders = BrowserFolders.KKS_BrowserFolders;
+#endif
+using UnityEngine;
 
 namespace FashionLine
 {
@@ -27,6 +43,14 @@ namespace FashionLine
 		private PluginData pluginData = null;
 		CoordData current = null;
 
+
+		Coroutine co = null;
+		private void PostAllLoad(object e, CharaReloadEventArgs v)
+		{
+
+		}
+
+
 		public void OnCharaReload(GameMode currentGameMode)
 		{
 			//reset data
@@ -35,18 +59,49 @@ namespace FashionLine
 				foreach(var fashion in line)
 					RemoveFashion(fashion.Key);
 
-				fashionData.Clear();
 				defultCoord = new ChaFileCoordinate();
+				fashionData.Clear();
+				pluginData = null;
 			}
 
+
+			//	FashionLine_Core.Logger.LogInfo("Got to post all function");
+			//	//if(v.ReloadedCharacter != this) return;
+			//	FashionLine_Core.Logger.LogInfo("Got to post all function x2");
+
+			//IEnumerator savedefatltCO(int delay)
+			//{
+			//
+			//	for(int a = -1; a < delay; ++a)
+			//		yield return null;
+			//}
+
+
+
 			//save init outfit
-			defultCoord.LoadBytes(ChaControl.nowCoordinate.SaveBytes(),
+			defultCoord.LoadBytes(
+				ChaControl.nowCoordinate.SaveBytes(),
 				ChaControl.nowCoordinate.loadVersion);
 
+			//save overlay data
+			var ctrlKCO = GetComponent<KoiClothesOverlayController>();
+			if(FashionLine_Core.KoiOverlayDependency.Exists && ctrlKCO)
+			{
+				ctrlKCO.GetType().GetMethod("OnCoordinateBeingSaved",
+					BindingFlags.Instance | BindingFlags.NonPublic)
+					.Invoke(ctrlKCO, new object[] { defultCoord });
+
+				//OnCoordinateBeingSaved();
+			}
 
 			//load new data
 			pluginData = this.LoadExtData();
 
+			//yield break;
+
+			//if(co != null)
+			//	StopCoroutine(co);
+			//co = StartCoroutine(savedefatltCO(11));
 			//profit
 		}
 
@@ -70,7 +125,7 @@ namespace FashionLine
 				fashionData.Add(name, data);
 
 				if(!MakerAPI.InsideMaker) return;
-				FashionLineGUI.AddCoordinate(in data);
+				FashionLine_GUI.AddCoordinate(in data);
 			}
 			catch(Exception e)
 			{
@@ -91,7 +146,7 @@ namespace FashionLine
 				fashionData.Remove(name);
 
 				if(!MakerAPI.InsideMaker) return;
-				FashionLineGUI.RemoveCoordinate(in tmp);
+				FashionLine_GUI.RemoveCoordinate(in tmp);
 			}
 			catch(Exception e)
 			{
@@ -113,7 +168,7 @@ namespace FashionLine
 				fashionData.Remove(name);
 
 				if(!MakerAPI.InsideMaker) return;
-				FashionLineGUI.RemoveCoordinate(in data);
+				FashionLine_GUI.RemoveCoordinate(in data);
 			}
 			catch(Exception e)
 			{
@@ -150,13 +205,13 @@ namespace FashionLine
 				WearCostume(line[index].Value);
 		}
 
-		public void WearCostume(in CoordData data)
+		public void WearCostume(in CoordData costume, bool isFile = true, bool reload = true)
 		{
-			if(data == null) return;
+			if(costume == null) return;
 
-			current = data;
+			current = costume;
 
-			if(FashionLine_Core.KoiOverlayModExists)
+			if(FashionLine_Core.KoiOverlayDependency.Exists)
 			{
 				try
 				{
@@ -177,8 +232,8 @@ namespace FashionLine
 
 			if(MakerAPI.InsideMaker)
 			{
-				var mkBase = MakerAPI.GetMakerBase();
 
+				var mkBase = MakerAPI.GetMakerBase();
 				mkBase.updateCustomUI = true;
 
 #if HONEY_API
@@ -187,98 +242,122 @@ namespace FashionLine
 #endif
 			}
 
-			MemoryStream stream = new MemoryStream(data.data);
-			if(!ChaControl.nowCoordinate.LoadFile(stream
+			if(isFile)
+			{
+
+				MemoryStream stream = new MemoryStream(costume.data);
+				if(!ChaControl.nowCoordinate.LoadFile(stream
 #if HONEY_API
 				, (int)Singleton<GameSystem>.Instance.language
 #endif
-			))
-			{
-				FashionLine_Core.Logger.LogMessage($"Could not read card [{data.name}]");
-				//return;
-			}
-
-			ChaControl.Reload(false, true, true, true
-#if HONEY_API
-				, true
-#endif
-			);
-
-
-
-			ChaControl.AssignCoordinate(
-#if KOI_API
-			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
-			//ChaFileDefine.CoordinateType.Plain
-#endif
-			);
-		}
-
-		public void WearDefaultCostume()
-		{
-			if(defultCoord == null) return;
-
-			if(FashionLine_Core.KoiOverlayModExists)
-			{
-				try
+				))
 				{
-
-					//	//There was no way around this
-					//	var ctrl = GetComponent<KoiClothesOverlayController>();
-					//	ctrl?.GetType().GetMethod("RemoveAllOverlays",
-					//		bindingAttr: BindingFlags.NonPublic | BindingFlags.Instance,
-					//		types: new Type[] { /*typeof(GameMode), typeof(bool)*/ },
-					//		binder: null, modifiers: null)
-					//		.Invoke(ctrl, new object[] { /*KoikatuAPI.GetCurrentGameMode(), false*/ });
-				}
-				catch(Exception e)
-				{
-					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
+					FashionLine_Core.Logger.LogMessage($"Could not read card [{costume.name}]. Data size [{costume.data.Length}]");
+					//return;
 				}
 			}
-
-
-
-
-			if(MakerAPI.InsideMaker)
+			else
 			{
-				var mkBase = MakerAPI.GetMakerBase();
+				//if(!ChaControl.nowCoordinate.LoadBytes(data.data,
+				//	ChaControl.nowCoordinate.loadVersion))
+				//{
+				//	FashionLine_Core.Logger.LogMessage($"Could not read raw data [{data.name}]. Data size [{data.data.Length}]");
+				//	//return;
+				//}
 
-				mkBase.updateCustomUI = true;
-
-#if HONEY_API
-				mkBase.ChangeAcsSlotName(-1);
-				mkBase.forceUpdateAcsList = true;
-#endif
+				ChaControl.nowCoordinate = (ChaFileCoordinate)costume.extras.Find((p) => p is ChaFileCoordinate);
 			}
 
+			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
+			if(FashionLine_Core.MatEditerDependency.Exists && ctrlMEC)
+				ctrlMEC.GetType().GetMethod("LoadCoordinateExtSaveData",
+					BindingFlags.Instance | BindingFlags.NonPublic)
+					.Invoke(ctrlMEC, new object[] { ChaControl.nowCoordinate });
 
-#if HONEY_API
-			ChaControl.nowCoordinate.LoadBytes
-				(defultCoord.SaveBytes(),
-				defultCoord.loadVersion);
-#else
-			ChaControl.nowCoordinate = defultCoord;
-#endif
+			var ctrlKCO = GetComponent<KoiClothesOverlayController>();
+			if(FashionLine_Core.KoiOverlayDependency.Exists && ctrlKCO)
+			{
+				ctrlKCO.GetType().GetMethod("OnCoordinateBeingLoaded",
+					BindingFlags.Instance | BindingFlags.NonPublic)
+					.Invoke(ctrlKCO, new object[]
+					{ ChaControl.nowCoordinate, false });
 
-			ChaControl.Reload(false, true, true, true
+				//OnCoordinateBeingLoaded();
+			}
+
+			if(reload)
+			{
+				if(FashionLine_Core.MatEditerDependency.Exists && ctrlMEC)
+					StartCoroutine(ctrlMEC.LoadData(true, true, true));
+
+				ChaControl.Reload(false, true, true, true
 #if HONEY_API
-				, true
+					, true
 #endif
 				);
 
-			ChaControl.AssignCoordinate(
+
+
+				ChaControl.AssignCoordinate(
 #if KOI_API
 			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
-			//ChaFileDefine.CoordinateType.Plain
+				//ChaFileDefine.CoordinateType.Plain
 #endif
-			);
+				);
+			}
+		}
+
+		public void WearDefaultCostume(bool reload = true)
+		{
+			var costume = new CoordData() { name = "(default)" };
+			costume.extras.Add(defultCoord);
+			WearCostume(costume, isFile: false, reload: false);
+
+			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
+
+			if(FashionLine_Core.MatEditerDependency.Exists && ctrlMEC)
+				ctrlMEC.GetType().GetMethod("LoadCharacterExtSaveData",
+					BindingFlags.Instance | BindingFlags.NonPublic)
+					.Invoke(ctrlMEC, null);
+
+
+
+			if(reload)
+			{
+				if(FashionLine_Core.MatEditerDependency.Exists && ctrlMEC)
+					StartCoroutine(ctrlMEC.LoadData(true, true, true));
+
+				ChaControl.Reload(false, true, true, true
+#if HONEY_API
+					, true
+#endif
+				);
+
+				ChaControl.AssignCoordinate(
+#if KOI_API
+			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
+				//ChaFileDefine.CoordinateType.Plain
+#endif
+				);
+			}
 		}
 
 		#region Class Overrides
-
-		protected override void OnReload(GameMode currentGameMode, bool maintainState)
+		protected override void Awake()
 		{
+			base.Awake();
+			KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
+		}
+
+		protected override void OnDestroy()
+		{
+			KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
+			base.OnDestroy();
+		}
+
+		protected override void OnReload(GameMode currentGameMode, bool keepState)
+		{
+			if(keepState) return;
 			OnCharaReload(currentGameMode);
 		}
 
@@ -286,6 +365,12 @@ namespace FashionLine
 		{
 			this.SaveExtData();
 		}
+
+		protected override void OnCoordinateBeingSaved(ChaFileCoordinate coordinate)
+		{
+			base.OnCoordinateBeingSaved(coordinate);
+		}
+
 		#endregion
 	}
 
