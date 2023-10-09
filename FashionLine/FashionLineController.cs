@@ -188,10 +188,10 @@ namespace FashionLine
 			index %= line.Count;
 
 			if(line.InRange(index))
-				WearCostume(line[index].Value);
+				WearFashion(line[index].Value);
 		}
 
-		public void LastInLine()
+		public void PrevInLine()
 		{
 			var line = fashionData.ToList();
 
@@ -202,10 +202,10 @@ namespace FashionLine
 			index = index < 0 ? line.Count - 1 : index;
 
 			if(line.InRange(index))
-				WearCostume(line[index].Value);
+				WearFashion(line[index].Value);
 		}
 
-		public void WearCostume(in CoordData costume, bool isFile = true, bool reload = true)
+		public void WearFashion(in CoordData costume, bool isFile = true, bool reload = true)
 		{
 			if(costume == null) return;
 
@@ -307,11 +307,11 @@ namespace FashionLine
 			}
 		}
 
-		public void WearDefaultCostume(bool reload = true)
+		public void WearDefaultFashion(bool reload = true)
 		{
 			var costume = new CoordData() { name = "(default)" };
 			costume.extras.Add(defultCoord);
-			WearCostume(costume, isFile: false, reload: false);
+			WearFashion(costume, isFile: false, reload: false);
 
 			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
 
@@ -341,6 +341,29 @@ namespace FashionLine
 				);
 			}
 		}
+
+		#region Helper Coroutines
+		public IEnumerator AddFashionCo(uint delay, string name, CoordData data)
+		{
+			for(int a = 0; a < ((int)delay); ++a)
+				yield return null;
+
+			AddFashion(name, data);
+
+			yield break;
+		}
+
+		public IEnumerator WearFashionCo(uint delay, CoordData costume, bool isFile = true, bool reload = true)
+		{
+			for(int a = 0; a < ((int)delay); ++a)
+				yield return null;
+
+			WearFashion(costume, isFile, reload);
+
+			yield break;
+		}
+
+		#endregion
 
 		#region Class Overrides
 		protected override void Awake()

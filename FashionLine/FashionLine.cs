@@ -152,7 +152,7 @@ namespace FashionLine
 
 					if(cfg.prevInLine.Value.IsDown())
 						foreach(var ctrl in list)
-							ctrl.LastInLine();
+							ctrl.PrevInLine();
 
 					return true;
 				});

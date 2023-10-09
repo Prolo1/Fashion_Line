@@ -31,8 +31,7 @@ namespace FashionLine
 	{
 
 		#region Data
-		private static MakerCategory category = null;
-		private static MakerCategory category2 = null;
+		private static MakerCategory category = null; 
 		public static readonly string subCategoryName = "FashionLine";
 		public static readonly string displayName = "Fashion Line";
 
@@ -40,7 +39,7 @@ namespace FashionLine
 		static GridLayoutGroup gridLayout = null;
 		static ToggleGroup tglGroup = null;
 		static MakerImage template = null;
-
+		public static Button coordToFashionBtn= null;
 #if HONEY_API
 		public static CvsO_Type charaCustom { get; private set; } = null;
 		public static CvsB_ShapeBreast boobCustom { get; private set; } = null;
@@ -114,96 +113,18 @@ namespace FashionLine
 					var orig = clothesSave.clothesLoadWin.button[1];
 					var par = orig.transform.parent;
 
-					var btn = GameObject.Instantiate(orig.gameObject, par).GetComponent<Button>();
-					btn.GetComponent<RectTransform>().anchoredPosition =
-					btn.GetComponent<RectTransform>().anchoredPosition + new Vector2(0, -80);
-					btn.SetTextFromTextComponent("Save & Add to FashionLine");
-					btn.onClick.RemoveAllListeners();
-
-
-					bool flag = false;
-					btn.onClick.AddListener(() =>
-					{
-						FashionLine_Core.Logger.LogInfo("clicked button");
-						orig.onClick.Invoke();
-
-						UnityAction tmp = () =>
-						{
-							IEnumerator func()
-							{
-								FileStream stream = null;
-
-								for(int a = 0; a < 10; ++a)
-									yield return null;
-
-								try
-								{
-									stream = new FileStream(LastCoordSaveLocation, FileMode.Open, FileAccess.Read);
-
-									MakerAPI.GetCharacterControl()
-									.GetComponent<FashionLineController>()
-									.AddFashion(
-									MakerAPI.GetCharacterControl().nowCoordinate.coordinateName,
-									new CoordData()
-									{
-										data = stream.ReadAllBytes(),
-										name = MakerAPI.GetCharacterControl().
-										nowCoordinate.coordinateName
-									});
-
-									stream.Close();
-									stream.Dispose();
-								}
-								catch(Exception ex)
-								{
-									stream?.Close();
-									stream?.Dispose();
-
-									FashionLine_Core.Logger.LogError(ex);
-								}
-								
-								FashionLine_Core.Logger.LogInfo("ran new listener");
-								flag = true;
-								
-								yield break;
-							}
-						
-							Instance.StartCoroutine(func());
-						};
-
-						UnityAction tmp2 = () =>
-						{
-
-							flag = true;
-							FashionLine_Core.Logger.LogInfo("ran new listener back");
-						};
-
-						Instance.StartCoroutine(Killme());
-						IEnumerator Killme()
-						{
-							yield return new WaitUntil(() => flag);
-
-							clothesSave.clothesNameInput.
-							btnEntry.onClick.RemoveListener(tmp);
-							clothesSave.clothesNameInput.
-							btnBack.onClick.RemoveListener(tmp2);
-
-							FashionLine_Core.Logger.LogInfo("removed added listener");
-
-							yield break;
-						}
-
-						clothesSave.clothesNameInput.
-						btnEntry.onClick.AddListener(tmp);
-						clothesSave.clothesNameInput.
-						btnBack.onClick.AddListener(tmp2);
-
-					});
-
-					var HLGroup = par.gameObject.GetComponent<HorizontalLayoutGroup>();
-					//HLGroup.CalculateLayoutInputHorizontal();
-					//HLGroup.CalculateLayoutInputVertical();
-					HLGroup.SetDirty();
+					coordToFashionBtn = GameObject.Instantiate(orig.gameObject, par).GetComponent<Button>();
+					coordToFashionBtn.GetComponent<RectTransform>().anchoredPosition =
+					coordToFashionBtn.GetComponent<RectTransform>().anchoredPosition + new Vector2(0, -80);
+					coordToFashionBtn.SetTextFromTextComponent("Save & Add to FashionLine");
+					coordToFashionBtn.onClick.RemoveAllListeners();
+					 
+					//Onclick code is done in a hook...
+ 
+					//var HLGroup = par.gameObject.GetComponent<HorizontalLayoutGroup>();
+					////HLGroup.CalculateLayoutInputHorizontal();
+					////HLGroup.CalculateLayoutInputVertical();
+					//HLGroup.SetDirty();
 				}
 
 				//Force the floating settings window to show up
@@ -229,6 +150,7 @@ namespace FashionLine
 			gridLayout = null;
 			currentCoord = null;
 			tglGroup = null;
+			coordToFashionBtn = null;
 		}
 
 		static void AddFashionLineMenu(RegisterCustomControlsEvent e)
@@ -328,7 +250,7 @@ namespace FashionLine
 				{
 					if(!tglGroup.AnyTogglesOn()) return;
 
-					fashCtrl.WearCostume(currentCoord);
+					fashCtrl.WearFashion(currentCoord);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
@@ -336,7 +258,7 @@ namespace FashionLine
 				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false))))
 				.OnClick.AddListener(() =>
 				{
-					fashCtrl.WearDefaultCostume();
+					fashCtrl.WearDefaultFashion();
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 		}
@@ -497,6 +419,9 @@ namespace FashionLine
 		{
 
 			yield return new WaitWhile(() => gridLayout == null);
+
+		//	for( int a=0;a<12;++a)
+		//		yield return null;
 
 			var comp = GameObject.Instantiate<GameObject>(template.ControlObject, template.ControlObject.transform.parent);
 			var img = comp.GetComponentInChildren<RawImage>();
