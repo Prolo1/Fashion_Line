@@ -6,6 +6,7 @@ using System.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 using BepInEx;
 using KKAPI.Utilities;
@@ -21,7 +22,8 @@ using Illusion.Game;
 
 using static KKAPI.Maker.MakerAPI;
 using static FashionLine.FashionLine_Core;
-using UnityEngine.Events;
+using UniRx;
+using TMPro;
 //using static FashionLine.FashionLine_Util;
 //using static Illusion.Game.Utils;
 
@@ -31,15 +33,19 @@ namespace FashionLine
 	{
 
 		#region Data
-		private static MakerCategory category = null; 
+		private static MakerCategory category = null;
 		public static readonly string subCategoryName = "FashionLine";
 		public static readonly string displayName = "Fashion Line";
 
+		static MyMakerText costTxt = null;
 		static CoordData currentCoord = null;
 		static GridLayoutGroup gridLayout = null;
 		static ToggleGroup tglGroup = null;
 		static MakerImage template = null;
-		public static Button coordToFashionBtn= null;
+		static EventHandler isPersistantHndl = null;
+		public static Button coordToFashionBtn = null;
+		public static Button toFashionOnlyBtn = null;
+
 #if HONEY_API
 		public static CvsO_Type charaCustom { get; private set; } = null;
 		public static CvsB_ShapeBreast boobCustom { get; private set; } = null;
@@ -108,19 +114,82 @@ namespace FashionLine
 
 
 #if HONEY_API
-				//add new button to coordinate save screen
+				//add new buttons to coordinate save screen
 				{
 					var orig = clothesSave.clothesLoadWin.button[1];
 					var par = orig.transform.parent;
 
-					coordToFashionBtn = GameObject.Instantiate(orig.gameObject, par).GetComponent<Button>();
-					coordToFashionBtn.GetComponent<RectTransform>().anchoredPosition =
-					coordToFashionBtn.GetComponent<RectTransform>().anchoredPosition + new Vector2(0, -80);
+					coordToFashionBtn = GameObject
+					.Instantiate(orig.gameObject, par)
+					.GetComponent<Button>();
+
+					var parRec = coordToFashionBtn.GetComponent<RectTransform>();
+					parRec.pivot = Vector3.one * .5f;
+					parRec.anchoredPosition =
+				   parRec.anchoredPosition +
+				   new Vector2(parRec.rect.size.x * .5f,
+				   parRec.rect.size.y * -.5f - 80);
+
+
+
+					Text txt;
+					GameObject obj;
+					if(txt = coordToFashionBtn.GetComponentInChildren<Text>())
+					{
+						obj = txt.gameObject;
+						GameObject.DestroyImmediate(txt);
+					}
+					else
+						obj = coordToFashionBtn.GetComponentInChildren<TMP_Text>()?.gameObject;
+
+
+					var txtpro = obj.GetOrAddComponent<TextMeshProUGUI>();
+					txtpro.ScaleToParent2D(pwidth: .8f);
+					txtpro.autoSizeTextContainer = false;
+					//Bounds b = txtpro.bounds;
+					//b.size = par.GetComponent<RectTransform>().rect.size * new Vector2(.50f, .90f);
+					//b.center = Vector3.zero;
+					txtpro.extraPadding = true;
+					txtpro.alignment = TextAlignmentOptions.Center;
+					txtpro.color = Color.black;
+					txtpro.enableAutoSizing = true;
+					txtpro.fontSizeMax = 100;
+					txtpro.fontSizeMin = 1;
+					txtpro.fontStyle = FontStyles.Bold;
+					txtpro.SetAllDirty();
+
 					coordToFashionBtn.SetTextFromTextComponent("Save & Add to FashionLine");
-					coordToFashionBtn.onClick.RemoveAllListeners();
-					 
+					coordToFashionBtn.onClick.ActuallyRemoveAllListeners();
+
+					toFashionOnlyBtn = GameObject
+					.Instantiate(coordToFashionBtn.gameObject, par)
+					.GetComponent<Button>();
+					toFashionOnlyBtn.GetComponent<RectTransform>().anchoredPosition =
+					toFashionOnlyBtn.GetComponent<RectTransform>().anchoredPosition +
+					new Vector2(toFashionOnlyBtn.GetComponent<RectTransform>().rect.size.x + 5, 0);
+					toFashionOnlyBtn.SetTextFromTextComponent("Add Only to FashionLine ");
+
+					//Add buttons to original list 
+					clothesSave.clothesLoadWin.button.Append(coordToFashionBtn);
+					clothesSave.clothesLoadWin.button.Append(toFashionOnlyBtn);
+
+					try
+					{
+
+						orig.ObserveEveryValueChanged((j) => j.m_Interactable).Subscribe((inter) =>
+						{
+							if(!coordToFashionBtn) return;
+							if(!toFashionOnlyBtn) return;
+							toFashionOnlyBtn.interactable = coordToFashionBtn.interactable = inter;
+						});
+					}
+					catch(Exception ex)
+					{
+						FashionLine_Core.Logger.LogError("could not subscribe to value change: " + ex);
+					}
+
 					//Onclick code is done in a hook...
- 
+
 					//var HLGroup = par.gameObject.GetComponent<HorizontalLayoutGroup>();
 					////HLGroup.CalculateLayoutInputHorizontal();
 					////HLGroup.CalculateLayoutInputVertical();
@@ -151,6 +220,12 @@ namespace FashionLine
 			currentCoord = null;
 			tglGroup = null;
 			coordToFashionBtn = null;
+			toFashionOnlyBtn = null;
+			costTxt = null;
+
+			if(isPersistantHndl != null)
+				cfg.areCoordinatesPersistant.SettingChanged -= isPersistantHndl;
+
 		}
 
 		static void AddFashionLineMenu(RegisterCustomControlsEvent e)
@@ -203,7 +278,7 @@ namespace FashionLine
 					gridLayout = gridPar.AddComponent<GridLayoutGroup>();
 					gui.ControlObject.transform.SetParent(gridPar.transform);
 					imgObj.ScaleToParent2D();
-					gridPar.ScaleToParent2D(height: false);
+					gridPar.ScaleToParent2D(changeheight: false);
 
 					int space = 7;
 					gridLayout.constraintCount = 3;
@@ -224,18 +299,75 @@ namespace FashionLine
 			});
 			#endregion
 
+			#region Top
+			costTxt = e.AddControl(new MyMakerText("Costume Name", category, inst))
+					.OnGUIExists((gui) =>
+					inst.StartCoroutine(AddToCustomGUILayoutCO(gui, top: true, horizontal: false)))
+				   ;
 
+			e.AddControl(new MakerSeparator(category, inst))
+				.OnGUIExists((gui) =>
+				inst.StartCoroutine(AddToCustomGUILayoutCO(gui, top: true, horizontal: false)))
+				;
 
-			((MakerButton)e.AddControl(new MakerButton("Add", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true))))
+			#endregion
+
+			#region Bottom
+			e.AddControl(new MakerToggle(category, "Make FashionLine Persistant", inst))
+				   .OnGUIExists((gui) =>
+				   {
+					   var obj = (MakerToggle)gui;
+					   cfg.areCoordinatesPersistant.SettingChanged += isPersistantHndl =
+					   (s, a) =>
+					   {
+						   if(obj.Value != cfg.areCoordinatesPersistant.Value)
+							   obj.Value = cfg.areCoordinatesPersistant.Value;
+					   };
+					   isPersistantHndl(null, null);
+
+					   inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: false));
+
+					   gui.ValueChanged.Subscribe((on) =>
+					   {
+						   cfg.areCoordinatesPersistant.Value = on;
+					   });
+				   });
+
+			((MakerButton)e.AddControl(new MakerButton("Wear Selected", category, inst))
+							.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: false))))
+							.OnClick.AddListener(() =>
+							{
+								if(!tglGroup.AnyTogglesOn()) return;
+
+								fashCtrl.WearFashion(currentCoord);
+								Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+							});
+
+			((MakerButton)e.AddControl(new MakerButton("Load Coordinate", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
 				.OnClick.AddListener(() =>
 				{
 					ForeGrounder.SetCurrentForground();
 					GetNewImageTarget();
 				});
 
-			((MakerButton)e.AddControl(new MakerButton("Remove", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: true))))
+			((MakerButton)e.AddControl(new MakerButton("Add Current", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
+				.OnClick.AddListener(() =>
+				{
+					Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
+				});
+
+			((MakerButton)e.AddControl(new MakerButton("Wear Default", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true, newVertLine: true))))
+				.OnClick.AddListener(() =>
+				{
+					fashCtrl.WearDefaultFashion();
+					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+				});
+
+			((MakerButton)e.AddControl(new MakerButton("Remove Selected", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
 				.OnClick.AddListener(() =>
 				{
 					if(!tglGroup.AnyTogglesOn()) return;
@@ -243,31 +375,13 @@ namespace FashionLine
 					fashCtrl.RemoveFashion(in currentCoord);
 					Illusion.Game.Utils.Sound.Play(SystemSE.cancel);
 				});
-
-			((MakerButton)e.AddControl(new MakerButton("Wear Selected Costume", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false))))
-				.OnClick.AddListener(() =>
-				{
-					if(!tglGroup.AnyTogglesOn()) return;
-
-					fashCtrl.WearFashion(currentCoord);
-					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
-				});
-
-			((MakerButton)e.AddControl(new MakerButton("Wear Default Costume", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToBottomGUILayoutCO(gui, horizontal: false))))
-				.OnClick.AddListener(() =>
-				{
-					fashCtrl.WearDefaultFashion();
-					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
-				});
+			#endregion
 		}
 
 		public static void AddCoordinate(in CoordData coord)
 		{
 			var inst = FashionLine_Core.Instance;
 			inst.StartCoroutine(AddCoordinateCO(coord));
-
 		}
 
 		public static void RemoveCoordinate(in CoordData coord)
@@ -276,17 +390,64 @@ namespace FashionLine
 			inst.StartCoroutine(RemoveCoordinateCO(coord));
 		}
 
-		#region Coroutine Helpers
-		static IEnumerator AddToBottomGUILayoutCO(BaseGuiEntry gui, bool horizontal = false, float horiScale = -1, bool newVertLine = false)
+		static Coroutine resizeco;
+		public static void ResizeCustomUIViewport(float viewpercent = -1)
 		{
+			if(viewpercent >= 0 && cfg.viewportUISpace.Value != viewpercent)
+				cfg.viewportUISpace.Value = viewpercent;
+			viewpercent = cfg.viewportUISpace.Value;
+
+			if(template != null)
+				template.OnGUIExists((gui) =>
+				{
+					IEnumerator func()
+					{
+
+						var ctrlObj = gui?.ControlObject;
+						if(ctrlObj == null) yield break;
+
+						yield return new WaitUntil(() =>
+						ctrlObj?.GetComponentInParent<ScrollRect>() != null);
+
+						var scrollRect = ctrlObj?.GetComponentInParent<ScrollRect>();
+
+						var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
+						float vHeight = Mathf.Abs(scrollRect.rectTransform.rect.height);
+						viewLE.minHeight = vHeight * viewpercent;
+
+						LayoutRebuilder.MarkLayoutForRebuild(scrollRect.rectTransform);
+					}
+
+					if(resizeco != null) Instance.StopCoroutine(resizeco);
+					resizeco = Instance.StartCoroutine(func());
+				});
+
+		}
+
+		#region Coroutine Helpers   
+		static IEnumerator AddToCustomGUILayoutCO<T>(T gui, bool horizontal = false, bool top = false, float horiScale = -1, float viewpercent = -1, bool newVertLine = false) where T : BaseGuiEntry
+		{
+
+
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
 
 			yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null);
 
+#if HONEY_API
+			if(gui is MakerText)
+			{
+				var piv = (Vector2)gui.ControlObject?
+					.GetComponentInChildren<Text>()?
+					.rectTransform.pivot;
+				piv.x = -.5f;
+				piv.y = 1f;
+			}
+#endif
+
 			var ctrlObj = gui.ControlObject;
 
-			var par = ctrlObj.GetComponentInParent<ScrollRect>().transform;
 			var scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
+			var par = ctrlObj.GetComponentInParent<ScrollRect>().transform;
 
 
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("Parent: " + par);
@@ -296,7 +457,7 @@ namespace FashionLine
 			var vlg = scrollRect.gameObject.GetOrAddComponent<VerticalLayoutGroup>();
 
 #if HONEY_API
-			vlg.childAlignment = TextAnchor.UpperCenter;
+			vlg.childAlignment = TextAnchor.UpperLeft;
 #else
 			vlg.childAlignment = TextAnchor.UpperCenter;
 #endif
@@ -307,8 +468,8 @@ namespace FashionLine
 			vlg.childForceExpandWidth = true;
 			vlg.childForceExpandHeight = false;
 
-
 			//This fixes the KOI_API rendering issue & enables scrolling over viewport (not elements tho)
+			//Also a sizing issue in Honey_API
 #if KOI_API
 			scrollRect.GetComponent<Image>().sprite = scrollRect.content.GetComponent<Image>()?.sprite;
 			scrollRect.GetComponent<Image>().color = (Color)scrollRect.content.GetComponent<Image>()?.color;
@@ -320,18 +481,22 @@ namespace FashionLine
 			if(!img)
 				img = scrollRect.viewport.GetComponent<Image>();
 			img.enabled = false;
+#elif HONEY_API
+			//		scrollRect.GetComponent<RectTransform>().sizeDelta =
+			//		  scrollRect.transform.parent.GetComponentInChildren<Image>().rectTransform.sizeDelta;
 #endif
 
 			//Setup LayoutElements 
 			scrollRect.verticalScrollbar.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
 			scrollRect.content.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
+
 			var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
+			viewLE.layoutPriority = 1;
 			viewLE.minWidth = -1;
 			viewLE.flexibleWidth = -1;
-			//viewLE.minHeight = -1;
-			float vHeight = scrollRect.rectTransform.rect.height;
-			viewLE.minHeight = vHeight * .75f;
-			//	viewLE.flexibleHeight = vHeight * .25f;
+			ResizeCustomUIViewport(viewpercent);
+
+
 
 
 			//Create  LayoutElement
@@ -358,7 +523,8 @@ namespace FashionLine
 #if HONEY_API
 				scrollRect.GetComponent<RectTransform>().rect.width;
 #else
-				viewLE.minWidth;
+				//viewLE.minWidth;
+				0;
 #endif
 
 				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputHorizontal();
@@ -384,16 +550,39 @@ namespace FashionLine
 				par?.GetComponent<RectTransform>()?.ScaleToParent2D();
 			}
 
+			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("setting as first/last");
+
+			//remove extra LayoutElements
+			var rList = ctrlObj.GetComponents<LayoutElement>();
+			for(int a = 1; a < rList.Length; ++a)
+				GameObject.DestroyImmediate(rList[a]);
 
 			//Set this object's Layout settings
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("setting as last");
-			ctrlObj.transform.SetParent(par);
-			ctrlObj.transform.SetAsLastSibling();
+			ctrlObj.transform.SetParent(par, false);
+			ctrlObj.GetComponent<RectTransform>().pivot = new Vector2(0, 1);
+			var apos = ctrlObj.GetComponent<RectTransform>().anchoredPosition; apos.x = 0;
+			if(top)
+				ctrlObj.transform.SetSiblingIndex
+					(scrollRect.viewport.transform.GetSiblingIndex());
+			else
+				ctrlObj.transform.SetAsLastSibling();
+
+			//if(ctrlObj.GetComponent<LayoutElement>())
+			//	GameObject.Destroy(ctrlObj.GetComponent<LayoutElement>());
 			var thisLE = ctrlObj.GetOrAddComponent<LayoutElement>();
+			thisLE.layoutPriority = 5;
+			thisLE.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
 
+			if(thisLE.transform.childCount > 1)
+			{
+				var tmp = GameObject.Instantiate(new GameObject(), thisLE.transform);
+				for(int a = 0; a < thisLE.transform.childCount; ++a)
+					if(thisLE.transform.GetChild(a) != tmp.transform)
+						thisLE.transform.GetChild(a--).SetParent(tmp.transform);
+
+			}
 			if(thisLE.transform.childCount > 0)
-				thisLE.transform.GetChild(0).GetComponent<RectTransform>().ScaleToParent2D();
-
+				thisLE.transform.GetChild(0).ScaleToParent2D();
 
 
 			thisLE.flexibleWidth = -1;
@@ -405,13 +594,21 @@ namespace FashionLine
 #if HONEY_API
 				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1;
 #else
-				horizontal && horiScale > 0 ? viewLE.minWidth * horiScale : -1;
+			//	horizontal && horiScale > 0 ? viewLE.minWidth * horiScale : -1;
+			0;
 #endif
 			//thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
 
 
 			//Reorder Scrollbar
-			scrollRect.verticalScrollbar.transform.SetAsLastSibling();
+			if(!top)
+			{
+				scrollRect.verticalScrollbar?.transform.SetAsLastSibling();
+				scrollRect.horizontalScrollbar?.transform.SetAsLastSibling();
+			}
+
+			vlg.SetLayoutVertical();
+			LayoutRebuilder.MarkLayoutForRebuild(scrollRect.GetComponent<RectTransform>());
 			yield break;
 		}
 
@@ -420,8 +617,8 @@ namespace FashionLine
 
 			yield return new WaitWhile(() => gridLayout == null);
 
-		//	for( int a=0;a<12;++a)
-		//		yield return null;
+			//	for( int a=0;a<12;++a)
+			//		yield return null;
 
 			var comp = GameObject.Instantiate<GameObject>(template.ControlObject, template.ControlObject.transform.parent);
 			var img = comp.GetComponentInChildren<RawImage>();
@@ -464,6 +661,30 @@ namespace FashionLine
 #endif
 			});
 
+			bool last = false;
+			tgl.ObserveEveryValueChanged(p => p.isPointerInside).Subscribe((hover) =>
+			{
+				if(last == hover) return;//not sure if this does anything...
+
+				if(hover)
+				{
+					costTxt.Text = coordinate.name;
+					costTxt.TextColor = Color.yellow;
+				}
+				else
+				{
+					costTxt.Text = FashionLine_Util.GetAllChaFuncCtrlOfType<FashionLineController>()
+					.FirstOrNull()?.fashionData.Values
+					.FirstOrNull(j => (Toggle)j.extras.FirstOrNull(k => k is Toggle) == tgl.group.ActiveToggles().FirstOrNull())
+					?.name ?? (tgl.group.AnyTogglesOn() ? costTxt.Text : "");//May find something better in the future (I hope so 😰)
+
+					if(tgl.group.AnyTogglesOn())
+						costTxt.TextColor = Color.green;
+				}
+
+				last = hover;
+			});
+
 			comp.SetActive(true);
 			yield break;
 		}
@@ -481,8 +702,7 @@ namespace FashionLine
 
 			yield break;
 		}
-
-
+		
 		#endregion
 
 		#region Image Stuff
@@ -569,5 +789,18 @@ namespace FashionLine
 		}
 		#endregion
 
+		#region User UI Objects
+		class MyMakerText : MakerText
+		{
+			public MyMakerText(string text, MakerCategory category, BaseUnityPlugin owner) : base(text, category, owner)
+			{ }
+
+			new public Color TextColor
+			{
+				get => ((Graphic)ControlObject.GetTextComponent()).color;
+				set => ((Graphic)ControlObject.GetTextComponent()).color = value;
+			}
+		}
+		#endregion
 	}
 }

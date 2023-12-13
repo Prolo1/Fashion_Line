@@ -27,7 +27,7 @@ using KK_Plugins.MaterialEditor;
 using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
 #elif KKS
 using MyBrowserFolders = BrowserFolders.KKS_BrowserFolders;
-#endif 
+#endif
 
 namespace FashionLine
 {
@@ -71,12 +71,14 @@ namespace FashionLine
 		{
 			//Main
 			public ConfigEntry<bool> enable;
+			public ConfigEntry<bool> areCoordinatesPersistant;
 			public ConfigEntry<KeyboardShortcut> prevInLine;
 			public ConfigEntry<KeyboardShortcut> nextInLine;
 
 			//Advanced
 			public ConfigEntry<bool> resetOnLaunch;
 			public ConfigEntry<bool> debug;
+			public ConfigEntry<float> viewportUISpace;
 
 			//Hiden
 			public ConfigEntry<string> lastCoordDir;
@@ -89,24 +91,27 @@ namespace FashionLine
 			Logger = base.Logger;
 			ForeGrounder.SetCurrentForground();
 
-			KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
-			BrowserfolderDependency = new DependencyInfo<MyBrowserFolders>(new Version(MyBrowserFolders.Version));
-			MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
+			//Soft dependency variables
+			{
+				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
+				BrowserfolderDependency = new DependencyInfo<MyBrowserFolders>(new Version(MyBrowserFolders.Version));
+				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
 
-			if(KoiOverlayDependency.Exists)
-				Logger.LogInfo("Koi Overlay Mod Exists!!!!!!!!");
-			else
-				Logger.LogInfo("Koi Overlay Mod Does Not Exist!!!!!!!!");
-
-			if(BrowserfolderDependency.Exists)
-				Logger.LogInfo("Browser Mod Exists!!!!!!!!");
-			else
-				Logger.LogInfo("Browser Mod Does Not Exist!!!!!!!!");
-
-			if(MatEditerDependency.Exists)
-				Logger.LogInfo("Mat Editor Mod Exists!!!!!!!!");
-			else
-				Logger.LogInfo("Mat Editor Mod Does Not Exist!!!!!!!!");
+			//	if(KoiOverlayDependency.Exists)
+			//		Logger.LogInfo("Koi Overlay Mod Exists!!!!!!!!");
+			//	else
+			//		Logger.LogInfo("Koi Overlay Mod Does Not Exist!!!!!!!!");
+			//
+			//	if(BrowserfolderDependency.Exists)
+			//		Logger.LogInfo("Browser Mod Exists!!!!!!!!");
+			//	else
+			//		Logger.LogInfo("Browser Mod Does Not Exist!!!!!!!!");
+			//
+			//	if(MatEditerDependency.Exists)
+			//		Logger.LogInfo("Mat Editor Mod Exists!!!!!!!!");
+			//	else
+			//		Logger.LogInfo("Mat Editor Mod Does Not Exist!!!!!!!!");
+			}
 
 			string main = "";
 			string adv = "Advanced";
@@ -117,6 +122,11 @@ namespace FashionLine
 				//main
 				enable = Config.Bind(main, "Enable", true, new ConfigDescription("Alows the mod to do stuff", null,
 				new ConfigurationManagerAttributes() { Order = index-- })),
+
+				areCoordinatesPersistant = Config.Bind(main, "Is FashionLine Persistent", false,
+				new ConfigDescription("changes if the current FashionLine will persist when changing characters in maker", null,
+				new ConfigurationManagerAttributes() { Order = index-- })),
+
 				nextInLine = Config.Bind(main, "Next In Line", KeyboardShortcut.Empty,
 				new ConfigDescription("Switch the current outfit with the next outfit in the list", null,
 				new ConfigurationManagerAttributes() { Order = index--, })),
@@ -124,7 +134,7 @@ namespace FashionLine
 				new ConfigDescription("Switch the current outfit with the previous outfit in the list", null,
 				new ConfigurationManagerAttributes() { Order = index--, })),
 
-				//Advanced
+				//Advanced (the rest are in seperate location)
 				resetOnLaunch = Config.Bind(adv, "Reset On Launch", true, new ConfigDescription("", null,
 				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })),
 
@@ -138,7 +148,14 @@ namespace FashionLine
 			{
 				cfg.debug = Config.Bind(adv, "Log Debug", false, new ConfigDescription("", null,
 				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })).ConfigDefaulter();
+				cfg.viewportUISpace = Config.Bind(adv, "Viewport UI Space", .60f, new ConfigDescription("", new AcceptableValueRange<float>(0, 1),
+				new ConfigurationManagerAttributes() { Order = index--, ShowRangeAsPercent = false, IsAdvanced = true })).ConfigDefaulter();
 			}
+
+			cfg.viewportUISpace.SettingChanged += (m, n) =>
+			{
+				FashionLine_GUI.ResizeCustomUIViewport();
+			};
 
 			IEnumerator KeyUpdate()
 			{
@@ -198,6 +215,18 @@ namespace FashionLine
 		/// </summary>
 		public Version CurrentVersion { get; } = new Version();
 
+		public void PrintExistsMsg()
+		{
+
+		}
+
+		public override string ToString()
+		{
+			return
+				$"Plugin Name: {plugin?.Info.Metadata.Name ?? "Null"}" +
+				$"Current version: {CurrentVersion}" +
+				$"Target Version: {TargetVersion}";
+		}
 	}
 
 	public static class FashionLine_Util
@@ -239,9 +268,11 @@ namespace FashionLine
 		/// <param name="gui"></param>
 		/// <param name="act"></param>
 		/// <returns></returns>
-		public static BaseGuiEntry OnGUIExists(this BaseGuiEntry gui, UnityAction<BaseGuiEntry> act)
+		public static T OnGUIExists<T>(this T gui, UnityAction<T> act) where T : BaseGuiEntry
 		{
-			IEnumerator func(BaseGuiEntry gui1, UnityAction<BaseGuiEntry> act1)
+			if(gui == null) return gui;
+
+			IEnumerator func(T gui1, UnityAction<T> act1)
 			{
 				if(!gui1.Exists)
 					yield return new WaitUntil(() => gui1.Exists);//the thing neeeds to exist first
@@ -280,36 +311,38 @@ namespace FashionLine
 			catch { return (T)(object)null; }
 		}   //I love loopholes 🤣
 
-		public static GameObject ScaleToParent2D(this GameObject obj, bool width = true, bool height = true)
+		public static GameObject ScaleToParent2D(this GameObject obj, float pwidth = 1, float pheight = 1, bool changewidth = true, bool changeheight = true)
 		{
 			RectTransform rectTrans = null;
 
-			rectTrans = obj.GetComponent<RectTransform>();
+			rectTrans = obj?.GetComponent<RectTransform>();
 
 			if(rectTrans == null) return obj;
 
 			//var rectTrans = par.GetComponent<RectTransform>();
 			rectTrans.anchorMin = new Vector2(
-				width ? 0 : rectTrans.anchorMin.x,
-				height ? 0 : rectTrans.anchorMin.y);
+				changewidth ? 0 + (1 - pwidth) : rectTrans.anchorMin.x,
+				changeheight ? 0 + (1 - pheight) : rectTrans.anchorMin.y);
 			rectTrans.anchorMax = new Vector2(
-				width ? 1 : rectTrans.anchorMax.x,
-				height ? 1 : rectTrans.anchorMax.y);
+				changewidth ? 1 - (1 - pwidth) : rectTrans.anchorMax.x,
+				changeheight ? 1 - (1 - pheight) : rectTrans.anchorMax.y);
+
+			rectTrans.localPosition = Vector3.zero;//The location of this line matters
+
 			rectTrans.offsetMin = new Vector2(
-				width ? 0 : rectTrans.offsetMin.x,
-				height ? 0 : rectTrans.offsetMin.y);
+				changewidth ? 0 : rectTrans.offsetMin.x,
+				changeheight ? 0 : rectTrans.offsetMin.y);
 			rectTrans.offsetMax = new Vector2(
-				width ? 0 : rectTrans.offsetMax.x,
-				height ? 0 : rectTrans.offsetMax.y);
-			rectTrans.localPosition = Vector3.zero;
+				changewidth ? 0 : rectTrans.offsetMax.x,
+				changeheight ? 0 : rectTrans.offsetMax.y);
 			//rectTrans.pivot = new Vector2(0.5f, 0.5f);
 
 			return obj;
 		}
 
-		public static T ScaleToParent2D<T>(this T comp, bool width = true, bool height = true) where T : Component
+		public static T ScaleToParent2D<T>(this T comp, float pwidth = 1, float pheight = 1, bool width = true, bool height = true) where T : Component
 		{
-			comp.gameObject.ScaleToParent2D(width: width, height: height);
+			comp?.gameObject.ScaleToParent2D(pwidth: pwidth, pheight: pheight, changewidth: width, changeheight: height);
 			return comp;
 		}
 
@@ -323,29 +356,45 @@ namespace FashionLine
 		public static int HierarchyLevelIndex(this Transform obj) => obj.parent ? obj.parent.HierarchyLevelIndex() + 1 : 0;
 		public static int HierarchyLevelIndex(this GameObject obj) => obj.transform.HierarchyLevelIndex();
 
+		public static Component GetTextComponent(this GameObject obj)
+		{
+			return (Component)obj?.GetComponentInChildren<TMP_Text>() ??
+			 obj?.GetComponentInChildren<Text>();
+		}
+		public static Component GetTextComponent(this Component obj)
+		{
+			return (Component)obj?.GetComponentInChildren<TMP_Text>() ??
+			 obj?.GetComponentInChildren<Text>();
+		}
+
 		/// <summary>
 		/// gets the text of the first Text or TMP_Text component in a game object or it's children.
 		///  If no component return null. 
 		/// </summary>
 		/// <param name="obj"></param>
 		/// <returns></returns>
-		public static string GetTextFromTextComponent(this GameObject obj) =>
+		public static string GetTextFromTextComponent(this GameObject obj)
+			=>
 			obj?.GetComponentInChildren<TMP_Text>()?.text ??
 			obj?.GetComponentInChildren<Text>()?.text ?? null;
+
 		/// <summary>
 		/// sets the text of the first Text or TMP_Text component in a game object or it's children.
 		///  If no component does nothing. 
 		/// </summary>
 		/// <param name="obj"></param>
 		/// <returns></returns>
-		public static void SetTextFromTextComponent(this GameObject obj, string txt)
-		{
-			Component comp;
-			if(comp = obj?.GetComponentInChildren<TMP_Text>())
-				((TMP_Text)comp).text = (txt);
-			else if(comp = obj?.GetComponentInChildren<Text>())
-				((Text)comp).text = (txt);
-		}
+		public static void SetTextFromTextComponent(this GameObject obj, string txt) =>
+		((Component)obj?.GetComponentInChildren<TMP_Text>() ??
+			obj?.GetComponentInChildren<Text>())?
+			.SetTextFromTextComponent(txt);
+
+		/// <summary>
+		/// sets the text of the first Text or TMP_Text component in a game object or it's children.
+		///  If no component does nothing. 
+		/// </summary>
+		/// <param name="obj"></param>
+		/// <returns></returns>
 		public static void SetTextFromTextComponent(this Component obj, string txt)
 		{
 			Component comp;

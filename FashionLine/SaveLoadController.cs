@@ -34,7 +34,6 @@ namespace FashionLine
 
 		public SaveLoadController()
 		{
-
 			CompositeResolver.Register(
 				UnityResolver.Instance,
 				StandardResolver.Instance,
@@ -69,7 +68,6 @@ namespace FashionLine
 		public abstract PluginData Save(CharaCustomFunctionController ctrler, PluginData data = null);
 		public abstract PluginData Load(CharaCustomFunctionController ctrler, PluginData data);
 		protected abstract PluginData UpdateVersionFromPrev(CharaCustomFunctionController ctrler, PluginData data);
-
 	}
 
 	/// <summary>
@@ -89,7 +87,7 @@ namespace FashionLine
 
 		/*
 		 Data that can (potentially) affect the save:
-		* 
+		* CoordData class
 		* 
 		 all I can think of for now
 		 */
@@ -134,9 +132,9 @@ namespace FashionLine
 
 				if(carddata == null) throw new Exception("Data does not exist");
 
-				FashionLine_Core.Logger.LogInfo($"cardata count: {carddata.Count}");
+				//FashionLine_Core.Logger.LogInfo($"cardata count: {carddata.Count}");
 				foreach(var line in carddata)
-					ctrl.AddFashion(line.Key, line.Value);
+					ctrl.AddFashion(line.Key, line.Value, overwrite: true);
 			}
 			catch(Exception e)
 			{
@@ -166,7 +164,7 @@ namespace FashionLine
 					for(int a = 0; a < fashion.Value.extras.Count; ++a)
 						if(fashion.Value.extras[a] is Toggle)
 							fashion.Value.extras.Remove(fashion.Value.extras[a--]);
-				
+
 				data.data[DataKeys[((int)LoadDataType.Data)]] = LZ4MessagePackSerializer.Serialize(dataLine, CompositeResolver.Instance);
 			}
 			catch(Exception e)
@@ -179,7 +177,5 @@ namespace FashionLine
 
 			return data;
 		}
-
 	}
-
 }
