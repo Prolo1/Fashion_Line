@@ -66,7 +66,7 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 
 ## Known Issues
 
-* I have no idea what will go wrong 
+* I have no idea what will go wrong (so far nothing major)
 
 ## Issues / Requests? <a name="issues"></a>
 
