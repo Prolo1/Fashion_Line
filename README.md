@@ -42,10 +42,13 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 * Stores coordinate cards within character card
 * Add/Remove coordinates from character card
 * Keybinds for switching to different costumes (set them yourself)
+* Add current costume to Fashion Line
+* New buttons in the clothes save menu
 
 ## Planned
 
-* Make it work properly in-game 
+* Make it work properly in-game
+* Have it work in studio (maybe)
 
 ## How To Use
 
@@ -57,7 +60,9 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 
 ## Examples
  
- ![HS2 image](https://github.com/Prolo1/Example-images/blob/main/Fashion%20hs2.png?raw=true)
+ ![Maker Menu](https://media.discordapp.net/attachments/1184458820290871396/1184471319996272712/image.png)
+ ![Cloths save buttons](https://media.discordapp.net/attachments/1184458820290871396/1184472525577650176/image.png)
+ ![Plugin settings](https://media.discordapp.net/attachments/1184458820290871396/1184474667805851728/image.png)
 
 ## Known Issues
 
