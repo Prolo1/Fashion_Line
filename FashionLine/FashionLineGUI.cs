@@ -351,19 +351,19 @@ namespace FashionLine
 					GetNewImageTarget();
 				});
 
-			((MakerButton)e.AddControl(new MakerButton("Add Current", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
-				.OnClick.AddListener(() =>
-				{
-					Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
-				});
-
 			((MakerButton)e.AddControl(new MakerButton("Wear Default", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true, newVertLine: true))))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
 				.OnClick.AddListener(() =>
 				{
 					fashCtrl.WearDefaultFashion(reload: true);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+				});
+
+			((MakerButton)e.AddControl(new MakerButton("Add Current Coordinate", category, inst))
+				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true, newVertLine: true))))
+				.OnClick.AddListener(() =>
+				{
+					Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
 				});
 
 			((MakerButton)e.AddControl(new MakerButton("Remove Selected", category, inst))

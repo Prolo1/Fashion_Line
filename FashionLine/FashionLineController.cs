@@ -39,23 +39,14 @@ namespace FashionLine
 	public class FashionLineController : CharaCustomFunctionController
 	{
 		internal Dictionary<string, CoordData> fashionData = new Dictionary<string, CoordData>();
-		private ChaFileCoordinate defultCoord = null;
+		private ChaFileCoordinate defaultCoord = null;
 		private PluginData pluginData = null;
 		private CoordData current = null;
-		private bool canReload = true;
+
 
 		Coroutine co = null;
-		private void PostAllLoad(object e, CharaReloadEventArgs v)
-		{
-
-		}
-
 		public void OnCharaReload(GameMode currentGameMode)
 		{
-			//	if(!canReload) return;
-
-			//if(!FashionLine_Core.Hooks.iscoordsavefinished) return;
-
 
 			if(FashionLine_Core.cfg.debug.Value)
 				FashionLine_Core.Logger
@@ -72,72 +63,64 @@ namespace FashionLine
 					fashionData.Clear();
 				}
 
-				defultCoord = new ChaFileCoordinate();
+				defaultCoord = new ChaFileCoordinate();
 				pluginData = null;
 			}
 
 
-			//	FashionLine_Core.Logger.LogInfo("Got to post all function");
-			//	//if(v.ReloadedCharacter != this) return;
-			//	FashionLine_Core.Logger.LogInfo("Got to post all function x2");
-
-			//IEnumerator savedefatltCO(int delay)
-			//{
-			//
-			//	for(int a = -1; a < delay; ++a)
-			//		yield return null;
-			//}
-
-
-
 			//save init outfit
-			defultCoord.LoadBytes(
+			defaultCoord.LoadBytes(
 				ChaControl.nowCoordinate.SaveBytes(),
 				ChaControl.nowCoordinate.loadVersion);
 
-			//save mat. editor data
-			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-			if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
-				try
-				{
-					ctrlMEC.GetType().GetMethod("OnCoordinateBeingSaved",
-						BindingFlags.Instance | BindingFlags.NonPublic,
-						types: new Type[] { typeof(ChaFileCoordinate) },
-						binder: null, modifiers: null)
-						.Invoke(ctrlMEC, new object[] { defultCoord });
-				}
-				catch(Exception e)
-				{
-					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
+			IEnumerator func(int delay)
+			{
+				for(int i = 0; i < delay; ++i)
+					yield return null;
 
-			//save overlay data
-			var ctrlKCO = GetComponent<KoiClothesOverlayController>();
-			if(FashionLine_Core.KoiOverlayDependency.InTargetVersionRange && ctrlKCO)
-				try
-				{
+				//save mat. editor data
+				var ctrlMEC = GetComponent<MaterialEditorCharaController>();
+				if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
+					try
+					{
+						ctrlMEC.GetType().GetMethod("OnCoordinateBeingSaved",
+							BindingFlags.Instance | BindingFlags.NonPublic,
+							types: new Type[] { typeof(ChaFileCoordinate) },
+							binder: null, modifiers: null)
+							.Invoke(ctrlMEC, new object[] { defaultCoord });
+					}
+					catch(Exception e)
+					{
+						FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
+					}
 
-					ctrlKCO.GetType().GetMethod("OnCoordinateBeingSaved",
-						BindingFlags.Instance | BindingFlags.NonPublic,
-						types: new Type[] { typeof(ChaFileCoordinate) },
-						binder: null, modifiers: null)
-						.Invoke(ctrlKCO, new object[] { defultCoord });
-				}
-				catch(Exception e)
-				{
-					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
+				//save overlay data
+				var ctrlKCO = GetComponent<KoiClothesOverlayController>();
+				if(FashionLine_Core.KoiOverlayDependency.InTargetVersionRange && ctrlKCO)
+					try
+					{
 
+						ctrlKCO.GetType().GetMethod("OnCoordinateBeingSaved",
+							BindingFlags.Instance | BindingFlags.NonPublic,
+							types: new Type[] { typeof(ChaFileCoordinate) },
+							binder: null, modifiers: null)
+							.Invoke(ctrlKCO, new object[] { defaultCoord });
+					}
+					catch(Exception e)
+					{
+						FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
+					}
 
+				yield break;
+			}
 
 			//load new data
 			pluginData = this.LoadExtData();
 
-			//yield break;
+			if(co != null)
+				StopCoroutine(co);
+			co = StartCoroutine(func(11));
 
-			//if(co != null)
-			//	StopCoroutine(co);
-			//co = StartCoroutine(savedefatltCO(11));
 			//profit
 		}
 
@@ -287,22 +270,6 @@ namespace FashionLine
 			}
 
 
-			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-			if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
-				try
-				{
-					ctrlMEC.GetType().GetMethod("OnCoordinateBeingLoaded",
-						BindingFlags.Instance | BindingFlags.NonPublic,
-						types: new Type[] { typeof(ChaFileCoordinate), typeof(bool) },
-						binder: null, modifiers: null)
-						.Invoke(ctrlMEC, new object[]
-						{ coord, false });
-				}
-				catch(Exception e)
-				{
-					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
-
 			var ctrlKCO = GetComponent<KoiClothesOverlayController>();
 			if(FashionLine_Core.KoiOverlayDependency.InTargetVersionRange && ctrlKCO)
 				try
@@ -319,6 +286,21 @@ namespace FashionLine
 					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
 				}
 
+			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
+			if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
+				try
+				{
+					ctrlMEC.GetType().GetMethod("OnCoordinateBeingLoaded",
+						BindingFlags.Instance | BindingFlags.NonPublic,
+						types: new Type[] { typeof(ChaFileCoordinate), typeof(bool) },
+						binder: null, modifiers: null)
+						.Invoke(ctrlMEC, new object[]
+						{ coord, false });
+				}
+				catch(Exception e)
+				{
+					FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
+				}
 
 			FashionReload(reload);
 		}
@@ -330,29 +312,13 @@ namespace FashionLine
 					.LogDebug("weard defult called");
 
 			var costume = new CoordData() { name = "(default)" };
-			costume.extras.Add(defultCoord);
+			costume.extras.Add(defaultCoord);
 
-			WearFashion(costume, isFile: false, reload: false);
-
-			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-			//if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
-			//	ctrlMEC.GetType().GetMethod("LoadCharacterExtSaveData",
-			//		BindingFlags.Instance | BindingFlags.NonPublic,
-			//		types: new Type[] { },
-			//		binder: null, modifiers: null)
-			//		.Invoke(ctrlMEC, null);
-			//
-			//if(FashionLine_Core.cfg.debug.Value)
-			//	FashionLine_Core.Logger
-			//		.LogDebug("loaded chara save data");
-
-
-			FashionReload(reload, defult: true);
+			WearFashion(costume, isFile: false, reload: true);
 		}
 
-		private void FashionReload(bool reload = true, bool defult = false)
+		private void FashionReload(bool reload = true)
 		{
-			canReload = false;
 			try
 			{
 
@@ -362,20 +328,17 @@ namespace FashionLine
 						FashionLine_Core.Logger
 							.LogDebug("Fashion reload called");
 
-					//var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-
-					var count = ChaControl.nowCoordinate.accessory.parts.Length;
-					for(int i = 0; i < count; ++i)
-						base.StartCoroutine(ChaControl.ChangeAccessoryAsync(i,
-							ChaControl.nowCoordinate.accessory.parts[i].type,
-							ChaControl.nowCoordinate.accessory.parts[i].id,
-							ChaControl.nowCoordinate.accessory.parts[i].parentKey, true, false));
+#if HONEY_API
+					Singleton<Character>.Instance.customLoadGCClear = false;
+#endif
 					ChaControl.Reload(false, true, true, true
 #if HONEY_API
 						, true
 #endif
 					);
-
+#if HONEY_API
+					Singleton<Character>.Instance.customLoadGCClear = true;
+#endif
 
 					if(MakerAPI.InsideMaker)
 					{
@@ -389,39 +352,7 @@ namespace FashionLine
 						mkBase.updateCustomUI = true;
 					}
 
-					//trying this out
-					if(defult)
-					{
-						try
-						{
-							var ctrlKCO = GetComponent<KoiClothesOverlayController>();
-							if(FashionLine_Core.KoiOverlayDependency.InTargetVersionRange && ctrlKCO)
-								ctrlKCO.GetType().GetMethod("OnReload",
-									BindingFlags.Instance | BindingFlags.NonPublic,
-									types: new Type[] { typeof(GameMode), typeof(bool) },
-									binder: null, modifiers: null)
-									.Invoke(ctrlKCO, new object[] { KoikatuAPI.GetCurrentGameMode(), false });
-						}
-						catch(Exception e)
-						{
-							FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
-						}
 
-						try
-						{
-							var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-							if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
-								ctrlMEC.GetType().GetMethod("OnReload",
-									BindingFlags.Instance | BindingFlags.NonPublic,
-									types: new Type[] { typeof(GameMode), typeof(bool) },
-									binder: null, modifiers: null)
-									.Invoke(ctrlMEC, new object[] { KoikatuAPI.GetCurrentGameMode(), false });
-						}
-						catch(Exception e)
-						{
-							FashionLine_Core.Logger.Log(Error, $"Something went wrong: {e}\n");
-						}
-					}
 					ChaControl.AssignCoordinate(
 #if KOI_API
 			(ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
@@ -431,7 +362,6 @@ namespace FashionLine
 				}
 			}
 			catch { }
-			canReload = true;
 		}
 
 		#region Helper Coroutines
@@ -461,12 +391,12 @@ namespace FashionLine
 		protected override void Awake()
 		{
 			base.Awake();
-			KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
+			//	KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
 		}
 
 		protected override void OnDestroy()
 		{
-			KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
+			//KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
 			base.OnDestroy();
 		}
 

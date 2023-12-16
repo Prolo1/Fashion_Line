@@ -25,9 +25,9 @@ using static FashionLine.FashionLine_Util;
 
 using KK_Plugins.MaterialEditor;
 #if HONEY_API
-using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
+using AllBrowserFolders = BrowserFolders.AI_BrowserFolders;
 #elif KKS
-using MyBrowserFolders = BrowserFolders.KKS_BrowserFolders;
+using AllBrowserFolders = BrowserFolders.KKS_BrowserFolders;
 #endif
 
 namespace FashionLine
@@ -51,7 +51,7 @@ namespace FashionLine
 
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(MyBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
+	[BepInDependency(AllBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
 	 public partial class FashionLine_Core : BaseUnityPlugin
 	{
 		public static FashionLine_Core Instance;
@@ -65,7 +65,7 @@ namespace FashionLine
 		internal static new ManualLogSource Logger;
 
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
-		internal static DependencyInfo<MyBrowserFolders> BrowserfolderDependency;
+		internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
 		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
 
 		public static FashionLineConfig cfg;
@@ -95,24 +95,24 @@ namespace FashionLine
 			//Soft dependency variables
 			{
 				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
-				BrowserfolderDependency = new DependencyInfo<MyBrowserFolders>(new Version(MyBrowserFolders.Version));
+				BrowserfolderDependency = new DependencyInfo<AllBrowserFolders>(new Version(AllBrowserFolders.Version));
 				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
 
 				if(!KoiOverlayDependency.InTargetVersionRange)
 					Logger.LogWarning($"Some functionality may be locked due to the " +
-						$"absence of [Overlay Manager] " +
+						$"absence of [{nameof(KoiOverlayDependency)}] " +
 						$"or the use of an incorrect version\n" +
 						$"{KoiOverlayDependency}");
 
 				if(!BrowserfolderDependency.InTargetVersionRange)
 					Logger.LogWarning($"Some functionality may be locked due to the " +
-							$"absence of [Browser Folders] " +
+							$"absence of [{nameof(BrowserfolderDependency)}] " +
 							$"or the use of an incorrect version\n" +
 							$"{BrowserfolderDependency}");
 
 				if(!MatEditerDependency.InTargetVersionRange)
 					Logger.LogWarning($"Some functionality may be locked due to the " +
-							$"absence of [Material Editor] " +
+							$"absence of [{nameof(MatEditerDependency)}] " +
 							$"or the use of an incorrect version\n" +
 							$"{MatEditerDependency}");
 
