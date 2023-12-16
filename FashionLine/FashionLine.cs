@@ -20,6 +20,7 @@ using BepInEx.Configuration;
 using ExtensibleSaveFormat;
 using KoiClothesOverlayX;
 
+
 using static FashionLine.FashionLine_Util;
 
 using KK_Plugins.MaterialEditor;
@@ -43,14 +44,15 @@ namespace FashionLine
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency)]
-	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
-	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(MyBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
 
 	// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency)]
-	public partial class FashionLine_Core : BaseUnityPlugin
+
+	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
+	// Check documentation of KoikatuAPI.VersionConst for more info.
+	[BepInDependency(MyBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
+	 public partial class FashionLine_Core : BaseUnityPlugin
 	{
 		public static FashionLine_Core Instance;
 		public const string ModName = "Fashion Line";
@@ -89,28 +91,31 @@ namespace FashionLine
 		{
 			Instance = this;
 			Logger = base.Logger;
-			ForeGrounder.SetCurrentForground();
-
+			ForeGrounder.SetCurrentForground(); 
 			//Soft dependency variables
 			{
 				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
 				BrowserfolderDependency = new DependencyInfo<MyBrowserFolders>(new Version(MyBrowserFolders.Version));
 				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
 
-			//	if(KoiOverlayDependency.Exists)
-			//		Logger.LogInfo("Koi Overlay Mod Exists!!!!!!!!");
-			//	else
-			//		Logger.LogInfo("Koi Overlay Mod Does Not Exist!!!!!!!!");
-			//
-			//	if(BrowserfolderDependency.Exists)
-			//		Logger.LogInfo("Browser Mod Exists!!!!!!!!");
-			//	else
-			//		Logger.LogInfo("Browser Mod Does Not Exist!!!!!!!!");
-			//
-			//	if(MatEditerDependency.Exists)
-			//		Logger.LogInfo("Mat Editor Mod Exists!!!!!!!!");
-			//	else
-			//		Logger.LogInfo("Mat Editor Mod Does Not Exist!!!!!!!!");
+				if(!KoiOverlayDependency.InTargetVersionRange)
+					Logger.LogWarning($"Some functionality may be locked due to the " +
+						$"absence of [Overlay Manager] " +
+						$"or the use of an incorrect version\n" +
+						$"{KoiOverlayDependency}");
+
+				if(!BrowserfolderDependency.InTargetVersionRange)
+					Logger.LogWarning($"Some functionality may be locked due to the " +
+							$"absence of [Browser Folders] " +
+							$"or the use of an incorrect version\n" +
+							$"{BrowserfolderDependency}");
+
+				if(!MatEditerDependency.InTargetVersionRange)
+					Logger.LogWarning($"Some functionality may be locked due to the " +
+							$"absence of [Material Editor] " +
+							$"or the use of an incorrect version\n" +
+							$"{MatEditerDependency}");
+
 			}
 
 			string main = "";
@@ -127,11 +132,11 @@ namespace FashionLine
 				new ConfigDescription("changes if the current FashionLine will persist when changing characters in maker", null,
 				new ConfigurationManagerAttributes() { Order = index-- })),
 
-				nextInLine = Config.Bind(main, "Next In Line", KeyboardShortcut.Empty,
-				new ConfigDescription("Switch the current outfit with the next outfit in the list", null,
-				new ConfigurationManagerAttributes() { Order = index--, })),
 				prevInLine = Config.Bind(main, "Prev. In Line", KeyboardShortcut.Empty,
 				new ConfigDescription("Switch the current outfit with the previous outfit in the list", null,
+				new ConfigurationManagerAttributes() { Order = index--, })),
+				nextInLine = Config.Bind(main, "Next In Line", KeyboardShortcut.Empty,
+				new ConfigDescription("Switch the current outfit with the next outfit in the list", null,
 				new ConfigurationManagerAttributes() { Order = index--, })),
 
 				//Advanced (the rest are in seperate location)
@@ -182,16 +187,21 @@ namespace FashionLine
 
 		}
 	}
-
+	
 	public class DependencyInfo<T> where T : BaseUnityPlugin
 	{
-		public DependencyInfo(Version targetVer = null)
+		public DependencyInfo(Version minTargetVer = null, Version maxTargetVer = null)
 		{
 			plugin = (T)GameObject.FindObjectOfType(typeof(T));
 			Exists = plugin != null;
-			TargetVersion = targetVer ?? new Version();
-			HasGreaterTargetVersion = (CurrentVersion = plugin?.Info.Metadata.Version ?? CurrentVersion) >= TargetVersion;
+			MinTargetVersion = minTargetVer ?? new Version();
+			MaxTargetVersion = maxTargetVer ?? new Version();
+			InTargetVersionRange = Exists &&
+				((CurrentVersion = plugin?.Info.Metadata.Version
+				?? new Version()) >= MinTargetVersion);
 
+			if(maxTargetVer != null && maxTargetVer >= MinTargetVersion)
+				InTargetVersionRange &= Exists && (CurrentVersion <= MaxTargetVersion);
 		}
 
 		/// <summary>
@@ -203,17 +213,22 @@ namespace FashionLine
 		/// </summary>
 		public bool Exists { get; } = false;
 		/// <summary>
-		/// Current version matches or exceeds the target mod version
+		/// Current version matches or exceeds the min target mod version. 
+		/// if a max is set it will also make sure the mod is within range.
 		/// </summary>
-		public bool HasGreaterTargetVersion { get; } = false;
+		public bool InTargetVersionRange { get; } = false;
 		/// <summary>
-		/// version this mod expects
+		/// min version this mod expects
 		/// </summary>
-		public Version TargetVersion { get; } = new Version();
+		public Version MinTargetVersion { get; } = null;
+		/// <summary>
+		/// max version this mod expects
+		/// </summary>
+		public Version MaxTargetVersion { get; } = null;
 		/// <summary>
 		/// version that is actually downloaded in the game
 		/// </summary>
-		public Version CurrentVersion { get; } = new Version();
+		public Version CurrentVersion { get; } = null;
 
 		public void PrintExistsMsg()
 		{
@@ -223,9 +238,10 @@ namespace FashionLine
 		public override string ToString()
 		{
 			return
-				$"Plugin Name: {plugin?.Info.Metadata.Name ?? "Null"}" +
-				$"Current version: {CurrentVersion}" +
-				$"Target Version: {TargetVersion}";
+				$"Plugin Name: {plugin?.Info.Metadata.Name ?? "Null"}\n" +
+				$"Current version: {CurrentVersion?.ToString() ?? "Null"}\n" +
+				$"Min Target Version: {MinTargetVersion}\n" +
+				$"Max Target Version: {MaxTargetVersion}\n";
 		}
 	}
 

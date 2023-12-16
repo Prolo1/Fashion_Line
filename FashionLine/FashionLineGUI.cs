@@ -339,11 +339,11 @@ namespace FashionLine
 							{
 								if(!tglGroup.AnyTogglesOn()) return;
 
-								fashCtrl.WearFashion(currentCoord);
+								fashCtrl.WearFashion(currentCoord, reload: true);
 								Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 							});
 
-			((MakerButton)e.AddControl(new MakerButton("Load Coordinate", category, inst))
+			((MakerButton)e.AddControl(new MakerButton("Load Coordinate[s]", category, inst))
 				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
 				.OnClick.AddListener(() =>
 				{
@@ -362,7 +362,7 @@ namespace FashionLine
 				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true, newVertLine: true))))
 				.OnClick.AddListener(() =>
 				{
-					fashCtrl.WearDefaultFashion();
+					fashCtrl.WearDefaultFashion(reload: true);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
@@ -702,7 +702,7 @@ namespace FashionLine
 
 			yield break;
 		}
-		
+
 		#endregion
 
 		#region Image Stuff
