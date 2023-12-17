@@ -32,8 +32,6 @@ using AllBrowserFolders = BrowserFolders.KKS_BrowserFolders;
 
 namespace FashionLine
 {
-	// Specify this as a plugin that gets loaded by BepInEx
-	[BepInPlugin(GUID, ModName, Version)]
 	// Tell BepInEx that we need KKAPI to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(KKAPI.KoikatuAPI.GUID, KKAPI.KoikatuAPI.VersionConst)]
@@ -52,7 +50,10 @@ namespace FashionLine
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	[BepInDependency(AllBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
-	 public partial class FashionLine_Core : BaseUnityPlugin
+
+	// Specify this as a plugin that gets loaded by BepInEx
+	[BepInPlugin(GUID, ModName, Version)]
+	public partial class FashionLine_Core : BaseUnityPlugin
 	{
 		public static FashionLine_Core Instance;
 		public const string ModName = "Fashion Line";
@@ -91,7 +92,7 @@ namespace FashionLine
 		{
 			Instance = this;
 			Logger = base.Logger;
-			ForeGrounder.SetCurrentForground(); 
+			ForeGrounder.SetCurrentForground();
 			//Soft dependency variables
 			{
 				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
@@ -159,7 +160,7 @@ namespace FashionLine
 
 			cfg.viewportUISpace.SettingChanged += (m, n) =>
 			{
-				FashionLine_GUI.ResizeCustomUIViewport();
+				FashionLine_GUI.template.ResizeCustomUIViewport();
 			};
 
 			IEnumerator KeyUpdate()
@@ -187,7 +188,7 @@ namespace FashionLine
 
 		}
 	}
-	
+
 	public class DependencyInfo<T> where T : BaseUnityPlugin
 	{
 		public DependencyInfo(Version minTargetVer = null, Version maxTargetVer = null)
@@ -475,6 +476,235 @@ namespace FashionLine
 			return new T[] { };
 		}
 
+		public static T AddToCustomGUILayout<T>(this T gui, bool horizontal = false, bool topUI = false, float horiScale = -1, float viewpercent = -1, bool newVertLine = false) where T : BaseGuiEntry
+		{
+			gui.OnGUIExists(g =>
+			{
+				Instance.StartCoroutine(g.AddToCustomGUILayoutCO
+				(horizontal, topUI, horiScale, viewpercent, newVertLine));
+			});
+			return gui;
+		}
+
+		static Coroutine resizeco;
+		public static void ResizeCustomUIViewport<T>(this T template, float viewpercent = -1) where T : BaseGuiEntry
+		{
+			if(viewpercent >= 0 && cfg.viewportUISpace.Value != viewpercent)
+				cfg.viewportUISpace.Value = viewpercent;
+			viewpercent = cfg.viewportUISpace.Value;
+
+			if(template != null)
+				template.OnGUIExists((gui) =>
+				{
+					IEnumerator func()
+					{
+
+						var ctrlObj = gui?.ControlObject;
+						if(ctrlObj == null) yield break;
+
+						yield return new WaitUntil(() =>
+						ctrlObj?.GetComponentInParent<ScrollRect>() != null);
+
+						var scrollRect = ctrlObj?.GetComponentInParent<ScrollRect>();
+
+						var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
+						float vHeight = Mathf.Abs(scrollRect.rectTransform.rect.height);
+						viewLE.minHeight = vHeight * viewpercent;
+
+						LayoutRebuilder.MarkLayoutForRebuild(scrollRect.rectTransform);
+					}
+
+					if(resizeco != null) Instance.StopCoroutine(resizeco);
+					resizeco = Instance.StartCoroutine(func());
+				});
+
+		}
+
+		static IEnumerator AddToCustomGUILayoutCO<T>(this T gui, bool horizontal = false, bool topUI = false, float horiScale = -1, float viewpercent = -1, bool newVertLine = false) where T : BaseGuiEntry
+		{			
+
+			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
+
+			yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null);
+
+#if HONEY_API
+			if(gui is MakerText)
+			{
+				var piv = (Vector2)gui.ControlObject?
+					.GetComponentInChildren<Text>()?
+					.rectTransform.pivot;
+				piv.x = -.5f;
+				piv.y = 1f;
+			}
+#endif
+
+			var ctrlObj = gui.ControlObject;
+
+			var scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
+			var par = ctrlObj.GetComponentInParent<ScrollRect>().transform;
+
+
+			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("Parent: " + par);
+
+
+			//setup VerticalLayoutGroup
+			var vlg = scrollRect.gameObject.GetOrAddComponent<VerticalLayoutGroup>();
+
+#if HONEY_API
+			vlg.childAlignment = TextAnchor.UpperLeft;
+#else
+			vlg.childAlignment = TextAnchor.UpperCenter;
+#endif
+			var pad = 10;//(int)cfg.unknownTest.Value;//10
+			vlg.padding = new RectOffset(pad, pad + 5, 0, 0);
+			vlg.childControlWidth = true;
+			vlg.childControlHeight = true;
+			vlg.childForceExpandWidth = true;
+			vlg.childForceExpandHeight = false;
+
+			//This fixes the KOI_API rendering issue & enables scrolling over viewport (not elements tho)
+			//Also a sizing issue in Honey_API
+#if KOI_API
+			scrollRect.GetComponent<Image>().sprite = scrollRect.content.GetComponent<Image>()?.sprite;
+			scrollRect.GetComponent<Image>().color = (Color)scrollRect.content.GetComponent<Image>()?.color;
+
+
+			scrollRect.GetComponent<Image>().enabled = true;
+			scrollRect.GetComponent<Image>().raycastTarget = true;
+			var img = scrollRect.content.GetComponent<Image>();
+			if(!img)
+				img = scrollRect.viewport.GetComponent<Image>();
+			img.enabled = false;
+#elif HONEY_API
+			//		scrollRect.GetComponent<RectTransform>().sizeDelta =
+			//		  scrollRect.transform.parent.GetComponentInChildren<Image>().rectTransform.sizeDelta;
+#endif
+
+			//Setup LayoutElements 
+			scrollRect.verticalScrollbar.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
+			scrollRect.content.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
+
+			var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
+			viewLE.layoutPriority = 1;
+			viewLE.minWidth = -1;
+			viewLE.flexibleWidth = -1;
+			gui.ResizeCustomUIViewport(viewpercent);
+
+
+
+
+			//Create  LayoutElement
+			if(horizontal)
+			{
+
+				//Create Layout Element GameObject
+				par = newVertLine ?
+					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform :
+					par.GetComponentsInChildren<HorizontalLayoutGroup>(2)
+					.LastOrNull((elem) => elem.GetComponent<HorizontalLayoutGroup>())?.transform.parent ??
+					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform;
+
+				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
+
+
+				//calculate base GameObject sizeing
+
+				var ele = par.GetOrAddComponent<LayoutElement>();
+				ele.minWidth = -1;
+				ele.minHeight = -1;
+				ele.preferredHeight = Math.Max(ele?.preferredHeight ?? -1, ctrlObj.GetOrAddComponent<LayoutElement>()?.minHeight ?? ele?.preferredHeight ?? -1);
+				ele.preferredWidth =
+#if HONEY_API
+				scrollRect.GetComponent<RectTransform>().rect.width;
+#else
+				//viewLE.minWidth;
+				0;
+#endif
+
+				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputHorizontal();
+				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputVertical();
+
+
+				//Create and Set Horizontal Layout Settings
+
+				par = par.GetComponentsInChildren<HorizontalLayoutGroup>(2)?
+					.LastOrNull((elem) => elem.gameObject.GetComponent<HorizontalLayoutGroup>())?.transform ??
+					GameObject.Instantiate<GameObject>(new GameObject("HorizontalLayoutGroup"), par)?.transform;
+				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
+
+				var layout = par.GetOrAddComponent<HorizontalLayoutGroup>();
+
+
+				layout.childControlWidth = true;
+				layout.childControlHeight = true;
+				layout.childForceExpandWidth = true;
+				layout.childForceExpandHeight = true;
+				layout.childAlignment = TextAnchor.MiddleCenter;
+
+				par?.GetComponent<RectTransform>()?.ScaleToParent2D();
+			}
+
+			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("setting as first/last");
+
+			//remove extra LayoutElements
+			var rList = ctrlObj.GetComponents<LayoutElement>();
+			for(int a = 1; a < rList.Length; ++a)
+				GameObject.DestroyImmediate(rList[a]);
+
+			//Set this object's Layout settings
+			ctrlObj.transform.SetParent(par, false);
+			ctrlObj.GetComponent<RectTransform>().pivot = new Vector2(0, 1);
+			var apos = ctrlObj.GetComponent<RectTransform>().anchoredPosition; apos.x = 0;
+			if(topUI)
+				ctrlObj.transform.SetSiblingIndex
+					(scrollRect.viewport.transform.GetSiblingIndex());
+			else
+				ctrlObj.transform.SetAsLastSibling();
+
+			//if(ctrlObj.GetComponent<LayoutElement>())
+			//	GameObject.Destroy(ctrlObj.GetComponent<LayoutElement>());
+			var thisLE = ctrlObj.GetOrAddComponent<LayoutElement>();
+			thisLE.layoutPriority = 5;
+			thisLE.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+
+			if(thisLE.transform.childCount > 1)
+			{
+				var tmp = GameObject.Instantiate(new GameObject(), thisLE.transform);
+				for(int a = 0; a < thisLE.transform.childCount; ++a)
+					if(thisLE.transform.GetChild(a) != tmp.transform)
+						thisLE.transform.GetChild(a--).SetParent(tmp.transform);
+
+			}
+			if(thisLE.transform.childCount > 0)
+				thisLE.transform.GetChild(0).ScaleToParent2D();
+
+
+			thisLE.flexibleWidth = -1;
+			thisLE.flexibleHeight = -1;
+			thisLE.minWidth = -1;
+			//thisLE.minHeight = -1;
+
+			thisLE.preferredWidth =
+#if HONEY_API
+				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1;
+#else
+			//	horizontal && horiScale > 0 ? viewLE.minWidth * horiScale : -1;
+			0;
+#endif
+			//thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
+
+
+			//Reorder Scrollbar
+			if(!topUI)
+			{
+				scrollRect.verticalScrollbar?.transform.SetAsLastSibling();
+				scrollRect.horizontalScrollbar?.transform.SetAsLastSibling();
+			}
+
+			vlg.SetLayoutVertical();
+			LayoutRebuilder.MarkLayoutForRebuild(scrollRect.GetComponent<RectTransform>());
+			yield break;
+		}
 
 	}
 

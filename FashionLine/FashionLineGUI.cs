@@ -41,8 +41,8 @@ namespace FashionLine
 		static CoordData currentCoord = null;
 		static GridLayoutGroup gridLayout = null;
 		static ToggleGroup tglGroup = null;
-		static MakerImage template = null;
 		static EventHandler isPersistantHndl = null;
+		internal static MakerImage template = null;
 		public static Button coordToFashionBtn = null;
 		public static Button toFashionOnlyBtn = null;
 
@@ -73,7 +73,7 @@ namespace FashionLine
 #if HONEY_API
 			   MakerCategory peram = MakerConstants.Parameter.Type;
 #else
-				MakerCategory peram = MakerConstants.Parameter.QA;
+			   MakerCategory peram = MakerConstants.Parameter.QA;
 #endif
 
 
@@ -301,78 +301,99 @@ namespace FashionLine
 
 			#region Top
 			costTxt = e.AddControl(new MyMakerText("Costume Name", category, inst))
-					.OnGUIExists((gui) =>
-					inst.StartCoroutine(AddToCustomGUILayoutCO(gui, top: true, horizontal: false)))
-				   ;
+				.AddToCustomGUILayout(topUI: true, horizontal: false);
 
 			e.AddControl(new MakerSeparator(category, inst))
-				.OnGUIExists((gui) =>
-				inst.StartCoroutine(AddToCustomGUILayoutCO(gui, top: true, horizontal: false)))
-				;
+				.AddToCustomGUILayout(topUI: true, horizontal: false);
 
 			#endregion
 
 			#region Bottom
 			e.AddControl(new MakerToggle(category, "Make FashionLine Persistant", inst))
-				   .OnGUIExists((gui) =>
-				   {
-					   var obj = (MakerToggle)gui;
-					   cfg.areCoordinatesPersistant.SettingChanged += isPersistantHndl =
-					   (s, a) =>
-					   {
-						   if(obj.Value != cfg.areCoordinatesPersistant.Value)
-							   obj.Value = cfg.areCoordinatesPersistant.Value;
-					   };
-					   isPersistantHndl(null, null);
+				.AddToCustomGUILayout(horizontal: false)
+				.OnGUIExists((gui) =>
+				{
+					var obj = (MakerToggle)gui;
+					cfg.areCoordinatesPersistant.SettingChanged += isPersistantHndl =
+					(s, a) =>
+					{
+						if(obj.Value != cfg.areCoordinatesPersistant.Value)
+							obj.Value = cfg.areCoordinatesPersistant.Value;
+					};
+					isPersistantHndl(null, null);
 
-					   inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: false));
+					gui.ValueChanged.Subscribe((on) =>
+					{
+						cfg.areCoordinatesPersistant.Value = on;
+					});
+				});
 
-					   gui.ValueChanged.Subscribe((on) =>
-					   {
-						   cfg.areCoordinatesPersistant.Value = on;
-					   });
-				   });
+			e.AddControl(new MyMakerButton("Wear Selected", category, inst))
+				.AddToCustomGUILayout(horizontal: true, newVertLine: true)
+				.OnClick.AddListener(() =>
+				{
+					if(!tglGroup.AnyTogglesOn()) return;
 
-			((MakerButton)e.AddControl(new MakerButton("Wear Selected", category, inst))
-							.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: false))))
-							.OnClick.AddListener(() =>
-							{
-								if(!tglGroup.AnyTogglesOn()) return;
+					fashCtrl.WearFashion(currentCoord, reload: true);
+					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+				});
 
-								fashCtrl.WearFashion(currentCoord, reload: true);
-								Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
-							});
+			e.AddControl(new MyMakerButton("Wear Default", category, inst))
+			   .AddToCustomGUILayout(horizontal: true)
+			   .OnClick.AddListener(() =>
+			   {
+				   fashCtrl.WearDefaultFashion(reload: true);
+				   Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+			   });
 
-			((MakerButton)e.AddControl(new MakerButton("Load Coordinate[s]", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
+			e.AddControl(new MyMakerButton("Load Coordinate[s]", category, inst))
+				.AddToCustomGUILayout(horizontal: true, newVertLine: true)
 				.OnClick.AddListener(() =>
 				{
 					ForeGrounder.SetCurrentForground();
 					GetNewImageTarget();
 				});
 
-			((MakerButton)e.AddControl(new MakerButton("Wear Default", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
-				.OnClick.AddListener(() =>
+			e.AddControl(new MyMakerButton("Add Current Coordinate", category, inst))
+			   .AddToCustomGUILayout(horizontal: true)
+			   .OnClick.AddListener(() =>
+			   {
+				   Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
+			   });
+
+			e.AddControl(new MyMakerText("Danger Zone", category, inst))
+				.AddToCustomGUILayout(horizontal: true, newVertLine: true)
+				.OnGUIExists(gui =>
 				{
-					fashCtrl.WearDefaultFashion(reload: true);
-					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+					gui.TextColor = Color.red;
 				});
 
-			((MakerButton)e.AddControl(new MakerButton("Add Current Coordinate", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true, newVertLine: true))))
-				.OnClick.AddListener(() =>
+			e.AddControl(new MyMakerButton("Remove Selected", category, inst))
+				.AddToCustomGUILayout(horizontal: true, newVertLine: true)
+				.OnGUIExists((gui) =>
 				{
-					Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
-				});
-
-			((MakerButton)e.AddControl(new MakerButton("Remove Selected", category, inst))
-				.OnGUIExists((gui) => inst.StartCoroutine(AddToCustomGUILayoutCO(gui, horizontal: true))))
+					gui.TextColor = Color.red;
+					gui.ButtonColor = Color.black;
+				})
 				.OnClick.AddListener(() =>
 				{
 					if(!tglGroup.AnyTogglesOn()) return;
 
 					fashCtrl.RemoveFashion(in currentCoord);
+					Illusion.Game.Utils.Sound.Play(SystemSE.cancel);
+				});
+
+			e.AddControl(new MyMakerButton("Remove All", category, inst))
+				.AddToCustomGUILayout(horizontal: true)
+				.OnGUIExists((gui) =>
+				{
+					gui.TextColor = Color.red;
+					gui.ButtonColor = Color.black;
+				})
+				.OnClick.AddListener(() =>
+				{
+					foreach(var fash in fashCtrl.fashionData.Values.ToList())
+						fashCtrl.RemoveFashion(in fash);
 					Illusion.Game.Utils.Sound.Play(SystemSE.cancel);
 				});
 			#endregion
@@ -390,227 +411,8 @@ namespace FashionLine
 			inst.StartCoroutine(RemoveCoordinateCO(coord));
 		}
 
-		static Coroutine resizeco;
-		public static void ResizeCustomUIViewport(float viewpercent = -1)
-		{
-			if(viewpercent >= 0 && cfg.viewportUISpace.Value != viewpercent)
-				cfg.viewportUISpace.Value = viewpercent;
-			viewpercent = cfg.viewportUISpace.Value;
-
-			if(template != null)
-				template.OnGUIExists((gui) =>
-				{
-					IEnumerator func()
-					{
-
-						var ctrlObj = gui?.ControlObject;
-						if(ctrlObj == null) yield break;
-
-						yield return new WaitUntil(() =>
-						ctrlObj?.GetComponentInParent<ScrollRect>() != null);
-
-						var scrollRect = ctrlObj?.GetComponentInParent<ScrollRect>();
-
-						var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
-						float vHeight = Mathf.Abs(scrollRect.rectTransform.rect.height);
-						viewLE.minHeight = vHeight * viewpercent;
-
-						LayoutRebuilder.MarkLayoutForRebuild(scrollRect.rectTransform);
-					}
-
-					if(resizeco != null) Instance.StopCoroutine(resizeco);
-					resizeco = Instance.StartCoroutine(func());
-				});
-
-		}
 
 		#region Coroutine Helpers   
-		static IEnumerator AddToCustomGUILayoutCO<T>(T gui, bool horizontal = false, bool top = false, float horiScale = -1, float viewpercent = -1, bool newVertLine = false) where T : BaseGuiEntry
-		{
-
-
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
-
-			yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null);
-
-#if HONEY_API
-			if(gui is MakerText)
-			{
-				var piv = (Vector2)gui.ControlObject?
-					.GetComponentInChildren<Text>()?
-					.rectTransform.pivot;
-				piv.x = -.5f;
-				piv.y = 1f;
-			}
-#endif
-
-			var ctrlObj = gui.ControlObject;
-
-			var scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
-			var par = ctrlObj.GetComponentInParent<ScrollRect>().transform;
-
-
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("Parent: " + par);
-
-
-			//setup VerticalLayoutGroup
-			var vlg = scrollRect.gameObject.GetOrAddComponent<VerticalLayoutGroup>();
-
-#if HONEY_API
-			vlg.childAlignment = TextAnchor.UpperLeft;
-#else
-			vlg.childAlignment = TextAnchor.UpperCenter;
-#endif
-			var pad = 10;//(int)cfg.unknownTest.Value;//10
-			vlg.padding = new RectOffset(pad, pad + 5, 0, 0);
-			vlg.childControlWidth = true;
-			vlg.childControlHeight = true;
-			vlg.childForceExpandWidth = true;
-			vlg.childForceExpandHeight = false;
-
-			//This fixes the KOI_API rendering issue & enables scrolling over viewport (not elements tho)
-			//Also a sizing issue in Honey_API
-#if KOI_API
-			scrollRect.GetComponent<Image>().sprite = scrollRect.content.GetComponent<Image>()?.sprite;
-			scrollRect.GetComponent<Image>().color = (Color)scrollRect.content.GetComponent<Image>()?.color;
-
-
-			scrollRect.GetComponent<Image>().enabled = true;
-			scrollRect.GetComponent<Image>().raycastTarget = true;
-			var img = scrollRect.content.GetComponent<Image>();
-			if(!img)
-				img = scrollRect.viewport.GetComponent<Image>();
-			img.enabled = false;
-#elif HONEY_API
-			//		scrollRect.GetComponent<RectTransform>().sizeDelta =
-			//		  scrollRect.transform.parent.GetComponentInChildren<Image>().rectTransform.sizeDelta;
-#endif
-
-			//Setup LayoutElements 
-			scrollRect.verticalScrollbar.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
-			scrollRect.content.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
-
-			var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
-			viewLE.layoutPriority = 1;
-			viewLE.minWidth = -1;
-			viewLE.flexibleWidth = -1;
-			ResizeCustomUIViewport(viewpercent);
-
-
-
-
-			//Create  LayoutElement
-			if(horizontal)
-			{
-
-				//Create Layout Element GameObject
-				par = newVertLine ?
-					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform :
-					par.GetComponentsInChildren<HorizontalLayoutGroup>(2)
-					.LastOrNull((elem) => elem.GetComponent<HorizontalLayoutGroup>())?.transform.parent ??
-					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform;
-
-				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
-
-
-				//calculate base GameObject sizeing
-
-				var ele = par.GetOrAddComponent<LayoutElement>();
-				ele.minWidth = -1;
-				ele.minHeight = -1;
-				ele.preferredHeight = Math.Max(ele?.preferredHeight ?? -1, ctrlObj.GetOrAddComponent<LayoutElement>()?.minHeight ?? ele?.preferredHeight ?? -1);
-				ele.preferredWidth =
-#if HONEY_API
-				scrollRect.GetComponent<RectTransform>().rect.width;
-#else
-				//viewLE.minWidth;
-				0;
-#endif
-
-				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputHorizontal();
-				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputVertical();
-
-
-				//Create and Set Horizontal Layout Settings
-
-				par = par.GetComponentsInChildren<HorizontalLayoutGroup>(2)?
-					.LastOrNull((elem) => elem.gameObject.GetComponent<HorizontalLayoutGroup>())?.transform ??
-					GameObject.Instantiate<GameObject>(new GameObject("HorizontalLayoutGroup"), par)?.transform;
-				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
-
-				var layout = par.GetOrAddComponent<HorizontalLayoutGroup>();
-
-
-				layout.childControlWidth = true;
-				layout.childControlHeight = true;
-				layout.childForceExpandWidth = true;
-				layout.childForceExpandHeight = true;
-				layout.childAlignment = TextAnchor.MiddleCenter;
-
-				par?.GetComponent<RectTransform>()?.ScaleToParent2D();
-			}
-
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("setting as first/last");
-
-			//remove extra LayoutElements
-			var rList = ctrlObj.GetComponents<LayoutElement>();
-			for(int a = 1; a < rList.Length; ++a)
-				GameObject.DestroyImmediate(rList[a]);
-
-			//Set this object's Layout settings
-			ctrlObj.transform.SetParent(par, false);
-			ctrlObj.GetComponent<RectTransform>().pivot = new Vector2(0, 1);
-			var apos = ctrlObj.GetComponent<RectTransform>().anchoredPosition; apos.x = 0;
-			if(top)
-				ctrlObj.transform.SetSiblingIndex
-					(scrollRect.viewport.transform.GetSiblingIndex());
-			else
-				ctrlObj.transform.SetAsLastSibling();
-
-			//if(ctrlObj.GetComponent<LayoutElement>())
-			//	GameObject.Destroy(ctrlObj.GetComponent<LayoutElement>());
-			var thisLE = ctrlObj.GetOrAddComponent<LayoutElement>();
-			thisLE.layoutPriority = 5;
-			thisLE.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
-
-			if(thisLE.transform.childCount > 1)
-			{
-				var tmp = GameObject.Instantiate(new GameObject(), thisLE.transform);
-				for(int a = 0; a < thisLE.transform.childCount; ++a)
-					if(thisLE.transform.GetChild(a) != tmp.transform)
-						thisLE.transform.GetChild(a--).SetParent(tmp.transform);
-
-			}
-			if(thisLE.transform.childCount > 0)
-				thisLE.transform.GetChild(0).ScaleToParent2D();
-
-
-			thisLE.flexibleWidth = -1;
-			thisLE.flexibleHeight = -1;
-			thisLE.minWidth = -1;
-			//thisLE.minHeight = -1;
-
-			thisLE.preferredWidth =
-#if HONEY_API
-				horizontal && horiScale > 0 ? par.GetComponent<RectTransform>().rect.width * horiScale : -1;
-#else
-			//	horizontal && horiScale > 0 ? viewLE.minWidth * horiScale : -1;
-			0;
-#endif
-			//thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
-
-
-			//Reorder Scrollbar
-			if(!top)
-			{
-				scrollRect.verticalScrollbar?.transform.SetAsLastSibling();
-				scrollRect.horizontalScrollbar?.transform.SetAsLastSibling();
-			}
-
-			vlg.SetLayoutVertical();
-			LayoutRebuilder.MarkLayoutForRebuild(scrollRect.GetComponent<RectTransform>());
-			yield break;
-		}
 
 		static IEnumerator AddCoordinateCO(CoordData coordinate)
 		{
@@ -785,22 +587,58 @@ namespace FashionLine
 			cfg.lastCoordDir.Value = path?.Substring(0, path.LastIndexOf('/')) ?? TargetDirectory;
 
 			OnFileObtained(paths);
-			Illusion.Game.Utils.Sound.Play(Illusion.Game.SystemSE.ok_l);
+			Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 		}
 		#endregion
 
 		#region User UI Objects
 		class MyMakerText : MakerText
 		{
-			public MyMakerText(string text, MakerCategory category, BaseUnityPlugin owner) : base(text, category, owner)
-			{ }
+			public MyMakerText(string text, MakerCategory category, BaseUnityPlugin owner)
+				: base(text, category, owner)
+			{
+				this.OnGUIExists(gui => { });
+			}
 
 			new public Color TextColor
 			{
 				get => ((Graphic)ControlObject.GetTextComponent()).color;
-				set => ((Graphic)ControlObject.GetTextComponent()).color = value;
+				set
+				{
+					var val = ((Graphic)ControlObject.GetTextComponent());
+					val.color = value;
+					val.SetAllDirty();
+				}
 			}
 		}
+		class MyMakerButton : MakerButton
+		{
+			public MyMakerButton(string text, MakerCategory category, BaseUnityPlugin owner) : base(text, category, owner)
+			{
+			}
+
+			public Color ButtonColor
+			{
+				get => ControlObject.GetComponentInChildren<Button>().targetGraphic.color;
+				set
+				{
+					var val = ControlObject.GetComponentInChildren<Button>().targetGraphic;
+					val.color = value;
+					val.SetAllDirty();
+				}
+			}
+			new public Color TextColor
+			{
+				get => ((Graphic)ControlObject.GetTextComponent()).color;
+				set
+				{
+					var val = ((Graphic)ControlObject.GetTextComponent());
+					val.color = value;
+					val.SetAllDirty();
+				}
+			}
+		}
+
 		#endregion
 	}
 }
