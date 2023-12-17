@@ -14,4 +14,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)FashionLineGUI.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SaveLoadController.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)FashionLine.Hooks.cs" />
+  </ItemGroup>
 </Project>
