@@ -61,7 +61,7 @@ namespace FashionLine
 		public const string Description =
 			"Adds the ability to save coordinate cards to a " +
 			"character card and use them (Why was this not a thing?)";
-		public const string Version = "0.1.0";
+		public const string Version = "0.2.0";
 
 		internal static new ManualLogSource Logger;
 
