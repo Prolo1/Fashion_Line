@@ -352,3 +352,5 @@ MigrationBackup/
 # My Custom Ignores
 *.zip
 Builds/
+Misc. Plugins/*.xml
+*.xml
