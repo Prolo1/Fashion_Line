@@ -339,12 +339,12 @@ namespace FashionLine
 				});
 
 			e.AddControl(new MyMakerButton("Wear Default", category, inst))
-			   .AddToCustomGUILayout(horizontal: true)
-			   .OnClick.AddListener(() =>
-			   {
-				   fashCtrl.WearDefaultFashion(reload: true);
-				   Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
-			   });
+				.AddToCustomGUILayout(horizontal: true)
+				.OnClick.AddListener(() =>
+				{
+					fashCtrl.WearDefaultFashion(reload: true);
+					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+				});
 
 			e.AddControl(new MyMakerButton("Load Coordinate[s]", category, inst))
 				.AddToCustomGUILayout(horizontal: true, newVertLine: true)
@@ -355,11 +355,11 @@ namespace FashionLine
 				});
 
 			e.AddControl(new MyMakerButton("Add Current Coordinate", category, inst))
-			   .AddToCustomGUILayout(horizontal: true)
-			   .OnClick.AddListener(() =>
-			   {
-				   Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
-			   });
+				.AddToCustomGUILayout(horizontal: true)
+				.OnClick.AddListener(() =>
+				{
+					Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
+				});
 
 			e.AddControl(new MyMakerText("Danger Zone", category, inst))
 				.AddToCustomGUILayout(horizontal: true, newVertLine: true)
