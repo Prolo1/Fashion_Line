@@ -373,7 +373,7 @@ namespace FashionLine
 				.OnGUIExists((gui) =>
 				{
 					gui.TextColor = Color.red;
-					gui.ButtonColor = Color.black;
+					gui.ButtonColor = Color.white.RGBMultiplied(0.35f);
 				})
 				.OnClick.AddListener(() =>
 				{
@@ -388,7 +388,7 @@ namespace FashionLine
 				.OnGUIExists((gui) =>
 				{
 					gui.TextColor = Color.red;
-					gui.ButtonColor = Color.black;
+					gui.ButtonColor = Color.white.RGBMultiplied(0.35f);
 				})
 				.OnClick.AddListener(() =>
 				{

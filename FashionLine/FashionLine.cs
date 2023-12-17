@@ -66,7 +66,7 @@ namespace FashionLine
 		internal static new ManualLogSource Logger;
 
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
-		internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
+		//	internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
 		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
 
 		public static FashionLineConfig cfg;
@@ -96,7 +96,7 @@ namespace FashionLine
 			//Soft dependency variables
 			{
 				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
-				BrowserfolderDependency = new DependencyInfo<AllBrowserFolders>(new Version(AllBrowserFolders.Version));
+				//	BrowserfolderDependency = new DependencyInfo<AllBrowserFolders>(new Version(AllBrowserFolders.Version));
 				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
 
 				if(!KoiOverlayDependency.InTargetVersionRange)
@@ -105,11 +105,11 @@ namespace FashionLine
 						$"or the use of an incorrect version\n" +
 						$"{KoiOverlayDependency}");
 
-				if(!BrowserfolderDependency.InTargetVersionRange)
-					Logger.LogWarning($"Some functionality may be locked due to the " +
-							$"absence of [{nameof(BrowserfolderDependency)}] " +
-							$"or the use of an incorrect version\n" +
-							$"{BrowserfolderDependency}");
+				//if(!BrowserfolderDependency.InTargetVersionRange)
+				//	Logger.LogWarning($"Some functionality may be locked due to the " +
+				//			$"absence of [{nameof(BrowserfolderDependency)}] " +
+				//			$"or the use of an incorrect version\n" +
+				//			$"{BrowserfolderDependency}");
 
 				if(!MatEditerDependency.InTargetVersionRange)
 					Logger.LogWarning($"Some functionality may be locked due to the " +
@@ -141,7 +141,7 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, })),
 
 				//Advanced (the rest are in seperate location)
-				resetOnLaunch = Config.Bind(adv, "Reset On Launch", true, new ConfigDescription("", null,
+				resetOnLaunch = Config.Bind(adv, "Reset On Launch", true, new ConfigDescription("When enabled, reset adv. values when the mod is launched", null,
 				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })),
 
 				//Hiden
@@ -152,9 +152,9 @@ namespace FashionLine
 
 			//Advanced
 			{
-				cfg.debug = Config.Bind(adv, "Log Debug", false, new ConfigDescription("", null,
+				cfg.debug = Config.Bind(adv, "Log Debug", false, new ConfigDescription("View extra debug logs", null,
 				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })).ConfigDefaulter();
-				cfg.viewportUISpace = Config.Bind(adv, "Viewport UI Space", .60f, new ConfigDescription("", new AcceptableValueRange<float>(0, 1),
+				cfg.viewportUISpace = Config.Bind(adv, "Viewport UI Space", .52f, new ConfigDescription("Increase / decrease the Fashion Line viewport size ", new AcceptableValueRange<float>(0, 1),
 				new ConfigurationManagerAttributes() { Order = index--, ShowRangeAsPercent = false, IsAdvanced = true })).ConfigDefaulter();
 			}
 
@@ -185,7 +185,6 @@ namespace FashionLine
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
 			Hooks.Init();
 			FashionLine_GUI.Init();
-
 		}
 	}
 
@@ -521,7 +520,7 @@ namespace FashionLine
 		}
 
 		static IEnumerator AddToCustomGUILayoutCO<T>(this T gui, bool horizontal = false, bool topUI = false, float horiScale = -1, float viewpercent = -1, bool newVertLine = false) where T : BaseGuiEntry
-		{			
+		{
 
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
 
