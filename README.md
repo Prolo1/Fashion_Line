@@ -26,8 +26,15 @@ Have you wondered why Illusion never allowed you to save coordinates to a charac
 
 The mod versions used are from the latest versions of [Better Repack](https://dl.betterrepack.com/public/)
 
+### Nececerry
+
 * [Illusion API](https://github.com/IllusionMods/IllusionModdingAPI)
 * [BepisPlugins](https://github.com/IllusionMods/BepisPlugins)
+  
+### Recommended
+
+* [Overlay Mods](https://github.com/ManlyMarco/Illusion-Overlay-Mods) 
+* [Material Editor](https://github.com/IllusionMods/KK_Plugins)
 
 ## Setup
 
@@ -40,15 +47,16 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 ## Features
 
 * Stores coordinate cards within character card
-* Add/Remove coordinates from character card
+* Add/Remove coordinates to character card
 * Keybinds for switching to different costumes (set them yourself)
 * Add current costume to Fashion Line
-* New buttons in the clothes save menu
+* Buttons in the clothes save menu (New!)
 
 ## Planned
 
 * Make it work properly in-game
-* Have it work in studio (maybe)
+* Have it work in Studio (maybe)
+* KK/KKS support
 
 ## How To Use
 
@@ -66,8 +74,9 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 
 ## Known Issues
 
-* I have no idea what will go wrong (so far nothing major)
+* ~~I have no idea what will go wrong (so far nothing major)~~
+* If you load a costume with over 20 accessory slots and use the "Wear Default" button, slots above 20 probably won't be cleared (I probably won't be able to fix this so... good luck👍)
 
 ## Issues / Requests? <a name="issues"></a>
 
-Want to request a new feature or report a bug you found? If you find any mod issues, you can add them to the [Git Issues](https://github.com/Prolo1/Fashion_Line/issues) page and if you have any requests or cool ideas add them to the [Discussions](https://github.com/Prolo1/Fashion_Line/discussions) page and I'll see what I can do  
+Would you like to request a new feature or report a bug you found? If you find any mod issues, you can add them to the [Git Issues](https://github.com/Prolo1/Fashion_Line/issues) page and if you have any requests or cool ideas add them to the [Discussions](https://github.com/Prolo1/Fashion_Line/discussions) page and I'll see what I can do.
