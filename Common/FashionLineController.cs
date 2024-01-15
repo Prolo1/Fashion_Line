@@ -45,7 +45,7 @@ namespace FashionLine
 
 
 		Coroutine co = null;
-		public void OnCharaReload(GameMode currentGameMode)
+		public void OnCharaReload(GameMode currentGameMode, bool keepState = false)
 		{
 
 			if(FashionLine_Core.cfg.debug.Value)
@@ -72,7 +72,8 @@ namespace FashionLine
 			defaultCoord.LoadBytes(
 				ChaControl.nowCoordinate.SaveBytes(),
 				ChaControl.nowCoordinate.loadVersion);
-
+			defaultCoord.pngData = ChaControl.nowCoordinate?.pngData?.ToArray();//copy
+		 
 			IEnumerator func(int delay)
 			{
 				for(int i = 0; i < delay; ++i)
@@ -388,23 +389,23 @@ namespace FashionLine
 		#endregion
 
 		#region Class Overrides
-		protected override void Awake()
-		{
-			base.Awake();
-			//	KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
-		}
+		//protected override void Awake()
+		//{
+		//	base.Awake();
+		//	//	KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
+		//}
 
-		protected override void OnDestroy()
-		{
-			//KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
-			base.OnDestroy();
-		}
+		//protected override void OnDestroy()
+		//{
+		//	//KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
+		//	base.OnDestroy();
+		//}
 
 		protected override void OnReload(GameMode currentGameMode, bool keepState)
 		{
 
 			if(keepState) return;
-			OnCharaReload(currentGameMode);
+			OnCharaReload(currentGameMode, keepState);
 		}
 
 		protected override void OnCardBeingSaved(GameMode currentGameMode)

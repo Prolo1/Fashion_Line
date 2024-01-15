@@ -11,6 +11,7 @@ using UnityEngine.UI;
 using TMPro;
 
 using KKAPI;
+using KKAPI.Studio;
 using KKAPI.Utilities;
 using KKAPI.Maker.UI;
 using KKAPI.Chara;
@@ -24,6 +25,9 @@ using KoiClothesOverlayX;
 using static FashionLine.FashionLine_Util;
 
 using KK_Plugins.MaterialEditor;
+using System.Reflection;
+using static GUIDrawer;
+using System.Threading;
 #if HONEY_API
 using AllBrowserFolders = BrowserFolders.AI_BrowserFolders;
 #elif KKS
@@ -59,15 +63,20 @@ namespace FashionLine
 		public const string ModName = "Fashion Line";
 		public const string GUID = "prolo.fashionline";//never change this
 		public const string Description =
-			"Adds the ability to save coordinate cards to a " +
-			"character card and use them (Why was this not a thing?)";
+			@"Adds the ability to save coordinate cards to a " +
+			@"character card and use them (Why was this not part of the game?¯\_(ツ)_/¯)";
 		public const string Version = "0.2.0";
 
 		internal static new ManualLogSource Logger;
 
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
-		//	internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
+		internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
 		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
+
+		internal static UnityEvent customUI = new UnityEvent();
+		internal static Texture2D UIGoku = null;
+		internal static Texture2D icon = null;
+		internal static Texture2D iconBG = null;
 
 		public static FashionLineConfig cfg;
 		public struct FashionLineConfig
@@ -82,6 +91,8 @@ namespace FashionLine
 			public ConfigEntry<bool> resetOnLaunch;
 			public ConfigEntry<bool> debug;
 			public ConfigEntry<float> viewportUISpace;
+			public ConfigEntry<float> studioUIWidth;
+			public ConfigEntry<Rect> studioWinRec;
 
 			//Hiden
 			public ConfigEntry<string> lastCoordDir;
@@ -117,6 +128,65 @@ namespace FashionLine
 							$"or the use of an incorrect version\n" +
 							$"{MatEditerDependency}");
 
+			}
+
+			//Embeded Resources
+			{
+				/**This stuff will be used later*/
+				var assembly = Assembly.GetExecutingAssembly();
+				var resources = assembly.GetManifestResourceNames();
+				Logger.LogDebug($"\nResources:\n[{string.Join(", ", resources)}]");
+
+				MemoryStream memStreme = new MemoryStream();
+				var data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("ultra instinct.jpg")));
+				data.CopyTo(memStreme);
+				UIGoku =
+					memStreme?.GetBuffer()?
+					.LoadTexture();
+				memStreme.SetLength(0);
+
+				data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("icon.png")));
+				data.CopyTo(memStreme);
+				icon =
+					memStreme?.GetBuffer()?
+					.LoadTexture();
+				memStreme.SetLength(0);
+
+				data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("new icon.png")));
+				data.CopyTo(memStreme);
+				iconBG =
+					memStreme?.GetBuffer()?
+					.LoadTexture();
+				memStreme.SetLength(0);
+
+
+
+			}
+
+			//Type Convertors
+			{
+				TomlTypeConverter.AddConverter(
+				   typeof(Rect),
+				   new TypeConverter()
+				   {
+					   ConvertToString = (o, t) =>
+					   {
+						   var rec = (Rect)o;
+
+						   return string.Format("{0:f0}:{1:f0}:{2:f0}:{3:f0}", rec.x, rec.y, rec.width, rec.height);
+					   },
+					   ConvertToObject = (s, t) =>
+					   {
+
+						   var values = s.Split(':');
+
+						   return new Rect(
+							   float.Parse(values[0]),
+							   float.Parse(values[1]),
+							   float.Parse(values[2]),
+							   float.Parse(values[3]));
+					   },
+				   });
 			}
 
 			string main = "";
@@ -156,6 +226,42 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, IsAdvanced = true })).ConfigDefaulter();
 				cfg.viewportUISpace = Config.Bind(adv, "Viewport UI Space", .52f, new ConfigDescription("Increase / decrease the Fashion Line viewport size ", new AcceptableValueRange<float>(0, 1),
 				new ConfigurationManagerAttributes() { Order = index--, ShowRangeAsPercent = false, IsAdvanced = true })).ConfigDefaulter();
+				cfg.studioUIWidth = Config.Bind(adv, "Studio UI Width", .5f, new ConfigDescription("Increase / decrease the Fashion Line content width ", new AcceptableValueRange<float>(0, 1),
+				new ConfigurationManagerAttributes() { Order = index--, ShowRangeAsPercent = false, IsAdvanced = true })).ConfigDefaulter();
+				cfg.studioWinRec = Config.Bind(adv, "Studio Win Rect", FashionLine_GUI.winRec, new ConfigDescription("reset the window location if needed", null,
+				new ConfigurationManagerAttributes()
+				{
+					Order = index--,
+					ShowRangeAsPercent = false,
+					IsAdvanced = true,
+					CustomDrawer = (draw) =>
+					{
+						Rect tmp = new Rect();
+						GUILayout.BeginHorizontal();
+
+						GUILayout.Label("X", GUILayout.ExpandWidth(false));
+						tmp.x = GUILayout.HorizontalSlider(cfg.studioWinRec.Value.x, 0, Screen.width, GUILayout.ExpandWidth(true));
+						float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
+
+						GUILayout.Label("Y", GUILayout.ExpandWidth(false));
+						tmp.y = GUILayout.HorizontalSlider(cfg.studioWinRec.Value.y, 0, Screen.height, GUILayout.ExpandWidth(true));
+						float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
+
+						GUILayout.Label("Width", GUILayout.ExpandWidth(false));
+						tmp.width = GUILayout.HorizontalSlider(cfg.studioWinRec.Value.width, 0, Screen.width, GUILayout.ExpandWidth(true));
+						float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
+
+						GUILayout.Label("Height", GUILayout.ExpandWidth(false));
+						tmp.height = GUILayout.HorizontalSlider(cfg.studioWinRec.Value.height, 0, Screen.height, GUILayout.ExpandWidth(true));
+						float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
+
+
+						GUILayout.EndHorizontal();
+
+						if(cfg.studioWinRec.Value != tmp)
+							cfg.studioWinRec.Value = tmp;
+					}
+				})).ConfigDefaulter();
 			}
 
 			cfg.viewportUISpace.SettingChanged += (m, n) =>
@@ -163,9 +269,14 @@ namespace FashionLine
 				FashionLine_GUI.template.ResizeCustomUIViewport();
 			};
 
+			cfg.studioWinRec.SettingChanged += (m, n) =>
+			{
+				if(!cfg.studioWinRec.Value.Equals(FashionLine_GUI.winRec))
+					FashionLine_GUI.winRec = new Rect(cfg.studioWinRec.Value);
+			};
+
 			IEnumerator KeyUpdate()
 			{
-
 				yield return new WaitWhile(() =>
 				{
 					var list = GetAllChaFuncCtrlOfType<FashionLineController>();
@@ -185,7 +296,11 @@ namespace FashionLine
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
 			Hooks.Init();
 			FashionLine_GUI.Init();
+
+			//Instantiate(new GameObject(), null).AddComponent<Canvas>();
 		}
+
+
 	}
 
 	public class DependencyInfo<T> where T : BaseUnityPlugin
