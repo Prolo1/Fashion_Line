@@ -33,7 +33,7 @@
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>..\Builds\[AI]_FashionLine\BepInEx\plugins\Prolo\</OutputPath>
-    <DefineConstants>TRACE;HS2 HONEY_API</DefineConstants>
+    <DefineConstants>TRACE;AI HONEY_API</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -83,6 +83,10 @@
       <HintPath>..\packages\IllusionLibs.BepInEx.5.4.20\lib\net35\BepInEx.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Cinemachine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\IllusionLibs.AIGirl.Cinemachine.2018.2.21.4\lib\net46\Cinemachine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="MessagePack, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\IllusionLibs.AIGirl.MessagePack.2020.5.29.4\lib\net46\MessagePack.dll</HintPath>
       <Private>False</Private>
@@ -91,6 +95,7 @@
       <HintPath>..\packages\IllusionLibs.AIGirl.Sirenix.Serialization.2020.5.29.4\lib\net46\Sirenix.Serialization.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System" />
     <Reference Include="UniRx, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\IllusionLibs.AIGirl.UniRx.2020.5.29.4\lib\net46\UniRx.dll</HintPath>
       <Private>False</Private>
@@ -138,7 +143,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <Import Project="..\FashionLine\FashionLine.projitems" Label="Shared" />
+  <Import Project="..\Common\Common.projitems" Label="Shared" />
   <Import Project="..\packages\IllusionLibs.AIGirl.Assembly-CSharp.2020.5.29.4\build\IllusionLibs.AIGirl.Assembly-CSharp.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.Assembly-CSharp.2020.5.29.4\build\IllusionLibs.AIGirl.Assembly-CSharp.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -158,6 +163,7 @@
     <Error Condition="!Exists('..\packages\IllusionLibs.AIGirl.Unity.TextMeshPro.2018.2.21.4\build\IllusionLibs.AIGirl.Unity.TextMeshPro.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.AIGirl.Unity.TextMeshPro.2018.2.21.4\build\IllusionLibs.AIGirl.Unity.TextMeshPro.targets'))" />
     <Error Condition="!Exists('..\packages\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.2018.2.21.4\build\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.2018.2.21.4\build\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.targets'))" />
     <Error Condition="!Exists('..\packages\IllusionLibs.AIGirl.UnityExtensions.2018.2.21.4\build\IllusionLibs.AIGirl.UnityExtensions.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.AIGirl.UnityExtensions.2018.2.21.4\build\IllusionLibs.AIGirl.UnityExtensions.targets'))" />
+    <Error Condition="!Exists('..\packages\IllusionLibs.AIGirl.Cinemachine.2018.2.21.4\build\IllusionLibs.AIGirl.Cinemachine.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\IllusionLibs.AIGirl.Cinemachine.2018.2.21.4\build\IllusionLibs.AIGirl.Cinemachine.targets'))" />
   </Target>
   <Import Project="..\packages\IllusionLibs.AIGirl.Assembly-CSharp-firstpass.2020.5.29.4\build\IllusionLibs.AIGirl.Assembly-CSharp-firstpass.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.Assembly-CSharp-firstpass.2020.5.29.4\build\IllusionLibs.AIGirl.Assembly-CSharp-firstpass.targets')" />
   <Import Project="..\packages\IllusionLibs.AIGirl.MessagePack.2020.5.29.4\build\IllusionLibs.AIGirl.MessagePack.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.MessagePack.2020.5.29.4\build\IllusionLibs.AIGirl.MessagePack.targets')" />
@@ -172,4 +178,5 @@
   <Import Project="..\packages\IllusionLibs.AIGirl.Unity.TextMeshPro.2018.2.21.4\build\IllusionLibs.AIGirl.Unity.TextMeshPro.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.Unity.TextMeshPro.2018.2.21.4\build\IllusionLibs.AIGirl.Unity.TextMeshPro.targets')" />
   <Import Project="..\packages\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.2018.2.21.4\build\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.2018.2.21.4\build\IllusionLibs.AIGirl.UnityEngine.TextRenderingModule.targets')" />
   <Import Project="..\packages\IllusionLibs.AIGirl.UnityExtensions.2018.2.21.4\build\IllusionLibs.AIGirl.UnityExtensions.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.UnityExtensions.2018.2.21.4\build\IllusionLibs.AIGirl.UnityExtensions.targets')" />
+  <Import Project="..\packages\IllusionLibs.AIGirl.Cinemachine.2018.2.21.4\build\IllusionLibs.AIGirl.Cinemachine.targets" Condition="Exists('..\packages\IllusionLibs.AIGirl.Cinemachine.2018.2.21.4\build\IllusionLibs.AIGirl.Cinemachine.targets')" />
 </Project>
