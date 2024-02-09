@@ -274,25 +274,19 @@ namespace FashionLine
 				var cfgmngatrib = cfg.bgUIImagepath.Description.Tags.OfType<ConfigurationManagerAttributes>().FirstOrDefault();
 				cfgmngatrib.CustomDrawer = (a) =>
 				{
-
-
 					GUILayout.BeginHorizontal();
+
 					cfg.enableBGUI.Value = GUILayout.Toggle(cfg.enableBGUI.Value, new GUIContent()
 					{
 						text = !cfg.enableBGUI.Value ? "Disabled" : null
 					});
 
-					if(!cfg.enableBGUI.Value)
-						FashionLine_GUI.userTexUI = null;
-					else
-						if(!FashionLine_GUI.userTexUI)
-						FashionLine_GUI.userTexUI =
-						cfg.bgUIImagepath.Value.CreateTexture(nullReturn: true);
-
 					if(cfg.enableBGUI.Value)
 					{
-						a.BoxedValue = GUILayout.TextField((string)a.BoxedValue, GUILayout.Width(202));
-						var but = new GUIStyle(GUI.skin.button);
+						var val = GUILayout.TextField((string)a.BoxedValue, GUILayout.Width(202));
+
+						if(val != (string)a.BoxedValue)
+							a.BoxedValue = val;
 
 						if(GUILayout.Button("Select"))
 							FashionLine_GUI.GetNewBGUIPath();
@@ -555,7 +549,7 @@ namespace FashionLine
 			{
 				if(_greyTex != null) return _greyTex;
 
-				_greyTex = Texture2D.whiteTexture;
+				_greyTex = new Texture2D(1,1);
 				var pixels = _greyTex.GetPixels();
 				for(int a = 0; a < pixels.Length; ++a)
 					pixels[a] = Color.black;
