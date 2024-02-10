@@ -118,6 +118,7 @@ namespace FashionLine
 		internal static UnityEvent customUI = new UnityEvent();
 		internal static Rect winRec = new Rect(105, 390, 440, 600);
 		internal static Rect offsetRect = new Rect(new Vector2(winRec.width, 0), new Vector2(200, 200));
+		static ToolbarToggle tgl;
 		static Rect sortRect = new Rect();
 		static bool enableStudioUI = false;
 		static bool enableStudioUISort = false;
@@ -223,12 +224,23 @@ namespace FashionLine
 					obj.name = "FashionLine_GUI";
 
 					CustomToolbarButtons.AddLeftToolbarToggle
-					(iconBG.ResizeTexture(TextureUtils.ImageFilterMode.Average,
-					32.0f / iconBG.width /*(new size) / (orig. size)*/),
-					onValueChanged: val =>
-					{
-						enableStudioUI = val;
-					});
+						(new Texture2D(32, 32),
+						onValueChanged: val =>
+						{
+							enableStudioUI = val;
+						}).OnGUIExists(gui =>
+						{
+							//Toggle image bi-pass
+							iconBG.filterMode = FilterMode.Bilinear;
+							
+							var btn = gui.ControlObject.GetComponentInChildren<Button>();
+							btn.image.sprite =
+							Sprite.Create(iconBG,
+							new Rect(0, 0, iconBG.width, iconBG.height),
+							Vector2.one * .5f);
+							 
+							btn.image.color = Color.white;
+						});
 				};
 
 				#region Init Values

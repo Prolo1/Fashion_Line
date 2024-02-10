@@ -43,28 +43,24 @@ namespace FashionLine
 {
 
 
+	[
 	// Tell BepInEx that we need KKAPI to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(KKAPI.KoikatuAPI.GUID, KKAPI.KoikatuAPI.VersionConst)]
-
+	BepInDependency(KKAPI.KoikatuAPI.GUID, KKAPI.KoikatuAPI.VersionConst),
 	// Tell BepInEx that we need ExtendedSave to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(ExtensibleSaveFormat.ExtendedSave.GUID, ExtensibleSaveFormat.ExtendedSave.Version)]
-
+	BepInDependency(ExtensibleSaveFormat.ExtendedSave.GUID, ExtensibleSaveFormat.ExtendedSave.Version),
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency)]
-
+	BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency),
 	// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency)]
-
+	BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency),
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	[BepInDependency(AllBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency)]
-
+	BepInDependency(AllBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency),
 	// Specify this as a plugin that gets loaded by BepInEx
-	[BepInPlugin(GUID, ModName, Version)]
+	BepInPlugin(GUID, ModName, Version)]
 	public partial class FashionLine_Core : BaseUnityPlugin
 	{
 		public static FashionLine_Core Instance;
@@ -428,7 +424,6 @@ namespace FashionLine
 			};
 
 
-
 			IEnumerator KeyUpdate()
 			{
 				yield return new WaitWhile(() =>
@@ -445,15 +440,14 @@ namespace FashionLine
 					return true;
 				});
 			}
-
 			StartCoroutine(KeyUpdate());
+
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
 			Hooks.Init();
 			FashionLine_GUI.Init();
 
 			//Instantiate(new GameObject(), null).AddComponent<Canvas>();
 		}
-
 
 		void CfgUpdate()
 		{
@@ -549,7 +543,7 @@ namespace FashionLine
 			{
 				if(_greyTex != null) return _greyTex;
 
-				_greyTex = new Texture2D(1,1);
+				_greyTex = new Texture2D(1, 1);
 				var pixels = _greyTex.GetPixels();
 				for(int a = 0; a < pixels.Length; ++a)
 					pixels[a] = Color.black;
