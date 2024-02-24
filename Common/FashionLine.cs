@@ -71,7 +71,7 @@ namespace FashionLine
 		public const string Description =
 			@"Adds the ability to save coordinate cards to a " +
 			@"character card and use them (Why was this not part of HS2/AI?¯\_(ツ)_/¯)";
-		public const string Version = "0.2.0";
+		public const string Version = "0.3.0";
 
 		internal static new ManualLogSource Logger;
 
