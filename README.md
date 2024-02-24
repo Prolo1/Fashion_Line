@@ -68,12 +68,12 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 
 ## Examples
  
-![Maker Menu](https://media.discordapp.net/attachments/1184458820290871396/1184471319996272712/image.png)
-![Cloths save buttons](https://media.discordapp.net/attachments/1184458820290871396/1184472525577650176/image.png)
-![Plugin settings](https://media.discordapp.net/attachments/1184458820290871396/1184474667805851728/image.png)
-![Studio 1](https://media.discordapp.net/attachments/1184458820290871396/1210847959596408894/image.png)
-![Studio 2](https://media.discordapp.net/attachments/1184458820290871396/1210848628457865257/image.png)
-![studio 3](https://media.discordapp.net/attachments/1184458820290871396/1210850746002837534/image.png)
+![Maker Menu](https://github.com/Prolo1/Example-images/blob/main/Fashion%20Line/Maker%20Menu.png?raw=true)
+![Cloths save buttons](https://github.com/Prolo1/Example-images/blob/main/Fashion%20Line/Cloths%20save%20buttons.png?raw=true)
+![Plugin settings](https://github.com/Prolo1/Example-images/blob/main/Fashion%20Line/Plugin%20settings.png?raw=true)
+![Studio 1](https://github.com/Prolo1/Example-images/blob/main/Fashion%20Line/Studio%201.png?raw=true)
+![Studio 2](https://github.com/Prolo1/Example-images/blob/main/Fashion%20Line/Studio%202.png?raw=true)
+![Studio 3](https://github.com/Prolo1/Example-images/blob/main/Fashion%20Line/Studio%203.png?raw=true)
 
 ## Known Issues
 
