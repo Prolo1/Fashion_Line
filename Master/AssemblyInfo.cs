@@ -1,5 +1,5 @@
 ﻿extern alias HS2;
-extern alias AI;
+//extern alias AI;
 //extern alias KKS;
 //extern alias KK;
 using System.Reflection;

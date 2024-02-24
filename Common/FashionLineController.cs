@@ -45,7 +45,7 @@ namespace FashionLine
 
 
 		Coroutine co = null;
-		public void OnCharaReload(GameMode currentGameMode)
+		public void OnCharaReload(GameMode currentGameMode, bool keepState = false)
 		{
 
 			if(FashionLine_Core.cfg.debug.Value)
@@ -72,6 +72,7 @@ namespace FashionLine
 			defaultCoord.LoadBytes(
 				ChaControl.nowCoordinate.SaveBytes(),
 				ChaControl.nowCoordinate.loadVersion);
+			defaultCoord.pngData = ChaControl.nowCoordinate?.pngData?.ToArray();//copy
 
 			IEnumerator func(int delay)
 			{
@@ -146,11 +147,12 @@ namespace FashionLine
 				else if(fashionData.ContainsKey(name))
 					throw new Exception("This coordinate already exists (or one with the same name)");
 
+				if(!overwrite)
+					FashionLine_GUI.RemoveCoordinate(fashionData[name]);
 
-				fashionData.Add(name, data);
-
-				if(!MakerAPI.InsideMaker) return;
 				FashionLine_GUI.AddCoordinate(in data);
+
+				fashionData[name] = data;
 			}
 			catch(Exception e)
 			{
@@ -388,23 +390,23 @@ namespace FashionLine
 		#endregion
 
 		#region Class Overrides
-		protected override void Awake()
-		{
-			base.Awake();
-			//	KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
-		}
+		//protected override void Awake()
+		//{
+		//	base.Awake();
+		//	//	KKAPI.Chara.CharacterApi.CharacterReloaded += PostAllLoad;
+		//}
 
-		protected override void OnDestroy()
-		{
-			//KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
-			base.OnDestroy();
-		}
+		//protected override void OnDestroy()
+		//{
+		//	//KKAPI.Chara.CharacterApi.CharacterReloaded -= PostAllLoad;
+		//	base.OnDestroy();
+		//}
 
 		protected override void OnReload(GameMode currentGameMode, bool keepState)
 		{
 
 			if(keepState) return;
-			OnCharaReload(currentGameMode);
+			OnCharaReload(currentGameMode, keepState);
 		}
 
 		protected override void OnCardBeingSaved(GameMode currentGameMode)
@@ -419,11 +421,33 @@ namespace FashionLine
 	{
 		public byte[] data;
 		public string name;
+		public DateTime updated;
+		public DateTime created;
+		public string translatedName
+		{
+			get
+			{
+				TranslationHelper.TryTranslate(name, out var trans);
+				return trans ?? name;
+			}
+		}
+
 		public readonly List<object> extras = new List<object>();
+
+		public CoordData()
+		{
+			updated = created = DateTime.Now;
+		}
 
 		public CoordData Clone()
 		{
-			var tmp = new CoordData() { data = data.ToArray(), name = name + "" };
+			var tmp = new CoordData()
+			{
+				data = data.ToArray(),
+				name = name + "",
+				created = new DateTime(created.Ticks),
+				updated = DateTime.Now
+			};
 			tmp.extras.AddRange(extras);
 			return tmp;
 		}
