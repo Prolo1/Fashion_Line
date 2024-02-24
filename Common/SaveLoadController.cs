@@ -98,9 +98,9 @@ namespace FashionLine
 		/// <returns></returns>
 		protected new PluginData UpdateVersionFromPrev(FashionLineController ctrler, PluginData data)
 		{
+
 			if(data == null || data?.version != Version)
 			{
-
 				data = base.Load(ctrler, data)?.Copy();
 				if(data != null && data.version == base.Version)
 				{
@@ -190,7 +190,6 @@ namespace FashionLine
 			return data;
 		}
 
-
 	}
 
 	public class SaveLoadControllerV1 : SaveLoadController<FashionLineController, PluginData>
@@ -238,7 +237,7 @@ namespace FashionLine
 
 			try
 			{
-				if(data.version != Version) throw new Exception($"Target data was incorrect version: expected [V{Version}] instead of [V{data.version}]");
+				if(data.version != Version) return data;//needs to return data
 
 				var carddata = LZ4MessagePackSerializer.Deserialize<Dictionary<string, CoordData>>((byte[])data.data[DataKeys[((int)LoadDataType.Data)]], CompositeResolver.Instance);
 
