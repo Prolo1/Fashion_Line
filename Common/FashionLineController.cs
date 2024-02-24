@@ -139,15 +139,11 @@ namespace FashionLine
 					))
 					throw new Exception($"Was not able to read data from card [{name}] (Not a coordinate card)");
 
-				if(overwrite)
-				{
-					if(fashionData.ContainsKey(name))
-						FashionLine_GUI.RemoveCoordinate(fashionData[name]);
-				}
-				else if(fashionData.ContainsKey(name))
+
+				if(!overwrite && fashionData.ContainsKey(name))
 					throw new Exception("This coordinate already exists (or one with the same name)");
 
-				if(!overwrite)
+				if(fashionData.ContainsKey(name))
 					FashionLine_GUI.RemoveCoordinate(fashionData[name]);
 
 				FashionLine_GUI.AddCoordinate(in data);

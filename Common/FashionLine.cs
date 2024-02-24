@@ -234,7 +234,7 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				//Studio
-				useCreatorDefaultBG = Config.Bind(stud, "Use Creator Defult BG", true,
+				useCreatorDefaultBG = Config.Bind(stud, "Use Creator Default BG", true,
 				new ConfigDescription("Use the creator recommended background as a default 😄", null,
 				new ConfigurationManagerAttributes()
 				{
@@ -243,7 +243,7 @@ namespace FashionLine
 					Browsable = StudioAPI.InsideStudio,
 				})),
 				enableBGUI = Config.Bind(stud, "Enable BG UI", true,
-				new ConfigDescription("Use the creator recommended background as a default 😄", null,
+				new ConfigDescription("Use your own background as a default 😄", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = studx, Browsable = false })),
 				bgUIImagepath = Config.Bind(stud, "BG UI Image Path", "",
 				new ConfigDescription("Use your own background image (will be [gray / creator defult] otherwise)", null,
