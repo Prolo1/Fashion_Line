@@ -102,19 +102,24 @@ namespace FashionLine
 			{
 
 				data = base.Load(ctrler, data)?.Copy();
-				var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadControllerV1.LoadDataType.Data]],CompositeResolver.Instance);
+				if(data != null && data.version == base.Version)
+				{
+					var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadControllerV1.LoadDataType.Data]], CompositeResolver.Instance);
 
-				data.data[DataKeys[(int)LoadDataType.Data]] =
-					LZ4MessagePackSerializer.Serialize(oldData.ToDictionary(k => k.Key,
-					v =>
-					{
-						var tmp = new CoordData() { data = v.Value.data, name = v.Value.name };
-						tmp.extras.AddRange(v.Value.extras);
-						return tmp;
-					}), CompositeResolver.Instance);
+					data.data[DataKeys[(int)LoadDataType.Data]] =
+						LZ4MessagePackSerializer.Serialize(oldData.ToDictionary(k => k.Key,
+						v =>
+						{
+							var tmp = new CoordData() { data = v.Value.data, name = v.Value.name };
+							tmp.extras.AddRange(v.Value.extras);
+							return tmp;
+						}), CompositeResolver.Instance);
 
-				data.version= Version;
-				//CharaMorpher_Core.Logger.LogDebug($"Old version: {data?.version.ToString() ?? "Don't exist..."}");
+					data.version = Version;
+					//CharaMorpher_Core.Logger.LogDebug($"Old version: {data?.version.ToString() ?? "Don't exist..."}");
+				}
+				else
+					data = null;
 			}
 
 			if(data == null)
@@ -125,7 +130,7 @@ namespace FashionLine
 
 		public override PluginData Load(FashionLineController ctrl, PluginData data)
 		{
-	 
+
 			data = UpdateVersionFromPrev(ctrl, data);// use if version goes up (i.e. 1->2)
 
 			if(data == null) return null;

@@ -23,6 +23,7 @@ using KKAPI;
 using KKAPI.Studio;
 using KKAPI.Studio.UI;
 using static KKAPI.Maker.MakerAPI;
+using static KKAPI.Studio.StudioAPI;
 using static FashionLine.FashionLine_Core;
 using static FashionLine.FashionLine_Util;
 using UniRx;
@@ -213,12 +214,13 @@ namespace FashionLine
 		public static void Init()
 		{
 
-			if(StudioAPI.InsideStudio)
+			if(InsideStudio)
 			{
 
-				StudioAPI.StudioLoadedChanged += (s, e) =>
+				StudioLoadedChanged += (s, e) =>
 				{
-					var obj = Instantiate(new GameObject());
+					//Allow OnGUI() to run
+					var obj = new GameObject();
 					obj.AddComponent<FashionLine_GUI>();
 					obj.transform.SetAsLastSibling();
 					obj.name = "FashionLine_GUI";
@@ -231,14 +233,14 @@ namespace FashionLine
 						}).OnGUIExists(gui =>
 						{
 							//Toggle image bi-pass
+
 							iconBG.filterMode = FilterMode.Bilinear;
-							
 							var btn = gui.ControlObject.GetComponentInChildren<Button>();
 							btn.image.sprite =
 							Sprite.Create(iconBG,
 							new Rect(0, 0, iconBG.width, iconBG.height),
 							Vector2.one * .5f);
-							 
+
 							btn.image.color = Color.white;
 						});
 				};
@@ -667,7 +669,9 @@ namespace FashionLine
 					//}
 					//catch { }
 
-					var gridPar = GameObject.Instantiate<GameObject>(new GameObject("Grid Layout Obj"), scrollRect.content).AddComponent<RectTransform>().gameObject;
+					var gridPar = new GameObject("Grid Layout Obj");
+					gridPar.transform.parent = scrollRect.content;
+					gridPar.AddComponent<RectTransform>();
 					gridLayout = gridPar.AddComponent<GridLayoutGroup>();
 					gui.ControlObject.transform.SetParent(gridPar.transform);
 					imgObj.ScaleToParent2D();
@@ -683,9 +687,10 @@ namespace FashionLine
 					gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
 					gridLayout.childAlignment = TextAnchor.MiddleCenter;
 
-					var txt = Instantiate(new GameObject(), tgl.transform)
-					.AddComponent<TextMeshProUGUI>();
-					txt.ScaleToParent2D(pwidth: .9f, pheight: .95f);
+					var txtObj = new GameObject();
+					txtObj.transform.parent = tgl.transform;
+					var txt = txtObj.AddComponent<TextMeshProUGUI>();
+					txtObj.ScaleToParent2D(pwidth: .9f, pheight: .95f);
 
 					yield return new WaitUntil(() => txt.fontMaterial != null);//wait for TMPro to instantiate
 

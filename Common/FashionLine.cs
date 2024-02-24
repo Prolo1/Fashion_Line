@@ -42,7 +42,7 @@ using AllBrowserFolders = BrowserFolders.KKS_BrowserFolders;
 namespace FashionLine
 {
 
-
+	#region dependencies
 	[
 	// Tell BepInEx that we need KKAPI to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
@@ -59,8 +59,10 @@ namespace FashionLine
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	BepInDependency(AllBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency),
+	]
+	#endregion
 	// Specify this as a plugin that gets loaded by BepInEx
-	BepInPlugin(GUID, ModName, Version)]
+	[BepInPlugin(GUID, ModName, Version)]
 	public partial class FashionLine_Core : BaseUnityPlugin
 	{
 		public static FashionLine_Core Instance;
@@ -68,17 +70,17 @@ namespace FashionLine
 		public const string GUID = "prolo.fashionline";//never change this
 		public const string Description =
 			@"Adds the ability to save coordinate cards to a " +
-			@"character card and use them (Why was this not part of the game?¯\_(ツ)_/¯)";
+			@"character card and use them (Why was this not part of HS2/AI?¯\_(ツ)_/¯)";
 		public const string Version = "0.2.0";
 
 		internal static new ManualLogSource Logger;
 
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
-		internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
 		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
+		internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
 
-		internal static Texture2D UIGoku = null;
 		internal static Texture2D icon = null;
+		internal static Texture2D UIGoku = null;
 		internal static Texture2D iconBG = null;
 
 		public static FashionLineConfig cfg;
@@ -116,26 +118,26 @@ namespace FashionLine
 			//Soft dependency variables
 			{
 				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
-				//	BrowserfolderDependency = new DependencyInfo<AllBrowserFolders>(new Version(AllBrowserFolders.Version));
 				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
+				BrowserfolderDependency = new DependencyInfo<AllBrowserFolders>(new Version(AllBrowserFolders.Version));
 
 				if(!KoiOverlayDependency.InTargetVersionRange)
 					Logger.LogWarning($"Some functionality may be locked due to the " +
-						$"absence of [{nameof(KoiOverlayDependency)}] " +
+						$"absence of [{nameof(KoiClothesOverlayMgr)}] " +
 						$"or the use of an incorrect version\n" +
 						$"{KoiOverlayDependency}");
+
+				if(!MatEditerDependency.InTargetVersionRange)
+					Logger.LogWarning($"Some functionality may be locked due to the " +
+							$"absence of [{nameof(MaterialEditorPlugin)}] " +
+							$"or the use of an incorrect version\n" +
+							$"{MatEditerDependency}");
 
 				//if(!BrowserfolderDependency.InTargetVersionRange)
 				//	Logger.LogWarning($"Some functionality may be locked due to the " +
 				//			$"absence of [{nameof(BrowserfolderDependency)}] " +
 				//			$"or the use of an incorrect version\n" +
 				//			$"{BrowserfolderDependency}");
-
-				if(!MatEditerDependency.InTargetVersionRange)
-					Logger.LogWarning($"Some functionality may be locked due to the " +
-							$"absence of [{nameof(MatEditerDependency)}] " +
-							$"or the use of an incorrect version\n" +
-							$"{MatEditerDependency}");
 
 			}
 
@@ -829,7 +831,7 @@ namespace FashionLine
 		/// </summary>
 		/// <param name="dir"></param>
 		/// <returns></returns>
-		public static string MakeDirPath(this string dir, string oldslash = "\\", string newslash = "/")
+		public static string MakeDirPath(this string dir, string oldslash = @"\", string newslash = "/")
 		{
 
 			dir = (dir ?? "").Trim().Replace(oldslash, newslash).Replace(newslash + newslash, newslash);
@@ -940,7 +942,6 @@ namespace FashionLine
 			//Create  LayoutElement
 			//if(horizontal)
 			{
-
 				//Create Layout Element GameObject
 				par = newVertLine ?
 					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform :
