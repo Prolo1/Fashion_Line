@@ -237,7 +237,7 @@ namespace FashionLine
 
 			try
 			{
-				if(data.version != Version) return data;
+				if(data.version != Version) return data;//needs to return data
 
 				var carddata = LZ4MessagePackSerializer.Deserialize<Dictionary<string, CoordData>>((byte[])data.data[DataKeys[((int)LoadDataType.Data)]], CompositeResolver.Instance);
 
