@@ -50,7 +50,10 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 * Add/Remove coordinates to character card
 * Keybinds for switching to different costumes (set them yourself)
 * Add current costume to Fashion Line
-* Buttons in the clothes save menu (New!)
+* Buttons in the clothes save menu
+* Runs in Studio (New!)
+* Search through added cards (New!) 
+* Sort added cards (New!) 
 
 ## Planned
 
