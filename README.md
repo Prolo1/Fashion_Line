@@ -68,9 +68,12 @@ The mod versions used are from the latest versions of [Better Repack](https://dl
 
 ## Examples
  
- ![Maker Menu](https://media.discordapp.net/attachments/1184458820290871396/1184471319996272712/image.png)
- ![Cloths save buttons](https://media.discordapp.net/attachments/1184458820290871396/1184472525577650176/image.png)
- ![Plugin settings](https://media.discordapp.net/attachments/1184458820290871396/1184474667805851728/image.png)
+![Maker Menu](https://media.discordapp.net/attachments/1184458820290871396/1184471319996272712/image.png)
+![Cloths save buttons](https://media.discordapp.net/attachments/1184458820290871396/1184472525577650176/image.png)
+![Plugin settings](https://media.discordapp.net/attachments/1184458820290871396/1184474667805851728/image.png)
+![Studio 1](https://media.discordapp.net/attachments/1184458820290871396/1210847959596408894/image.png)
+![Studio 2](https://media.discordapp.net/attachments/1184458820290871396/1210848628457865257/image.png)
+![studio 3](https://media.discordapp.net/attachments/1184458820290871396/1210850746002837534/image.png)
 
 ## Known Issues
 
