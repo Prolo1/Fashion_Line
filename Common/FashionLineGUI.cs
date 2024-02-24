@@ -272,13 +272,14 @@ namespace FashionLine
 				{
 					GUILayout.BeginVertical();
 
-
+					//Currently selected Coordinate
 					var tmpSty = new GUIStyle(GUI.skin.label);
 
 					var sel = selectKey != null ?
 					 selectKey.name : "";
 
 					tmpSty.fontStyle = selectKey == null ? FontStyle.Italic : FontStyle.Normal;
+					tmpSty.alignment = TextAnchor.LowerLeft;
 					tmpSty.wordWrap = true;
 					tmpSty.normal.textColor = tooltip.IsNullOrWhiteSpace() && selectKey != null ?
 					Color.green : Color.white;
@@ -291,11 +292,11 @@ namespace FashionLine
 					float txtH = GUILayoutUtility.GetLastRect().height;
 
 
-
+					//Search Bar
 					GUILayout.BeginHorizontal();
 
 					tmpSty = new GUIStyle(GUI.skin.textField);
-					tmpSty.alignment = TextAnchor.MiddleLeft;
+					tmpSty.alignment = TextAnchor.LowerLeft;
 					tmpSty.fontSize = (int)(fws * 0.95f);
 					tmpSty.fontStyle = search.IsNullOrWhiteSpace() ? FontStyle.Italic : FontStyle.Normal;
 					//tmpSty.overflow= true;
@@ -311,6 +312,8 @@ namespace FashionLine
 					}
 					txtH += GUILayoutUtility.GetLastRect().height;
 
+
+					//Sort Button
 					if(GUILayout.Button("Sort",
 						GUILayout.Width(winRec.width * .20f),
 						GUILayout.Height(tmpSty.lineHeight)))
@@ -318,6 +321,7 @@ namespace FashionLine
 
 					GUILayout.EndHorizontal();
 
+					//Card view Window
 					scrollPos = GUILayout.BeginScrollView(scrollPos, false, true,
 						GUILayout.Height((winRec.height - txtH) * .65f), GUILayout.ExpandWidth(true));
 
@@ -404,6 +408,7 @@ namespace FashionLine
 						tooltip = "";
 					}
 
+					//Bottom Buttons
 					var colour1 = GUI.color;
 					var colour2 = GUI.contentColor;
 					var colour3 = GUI.backgroundColor;
@@ -411,20 +416,26 @@ namespace FashionLine
 					GUI.color = Color.white;
 					GUI.contentColor = Color.white;
 
+					tmpSty = new GUIStyle(GUI.skin.button);
+					tmpSty.normal.textColor = tmpSty.normal.textColor.AlphaMultiplied(lists.Any() ? 1 : 0.60f);
+					if(!lists.Any())
+						tmpSty.active = tmpSty.hover = tmpSty.normal;
+
 					GUILayout.EndScrollView();
 					GUILayout.BeginHorizontal();
-					if(GUILayout.Button("wear selected"))
+					if(GUILayout.Button("Wear Selected", tmpSty))
 						foreach(var fashion in lists)
 							if(selectKey != null)
 								fashion.WearFashion(selectKey);
 
-					if(GUILayout.Button("wear defult"))
+					if(GUILayout.Button("Wear Defult", tmpSty))
 						foreach(var fashion in lists)
 							fashion.WearDefaultFashion();
 					GUILayout.EndHorizontal();
 
 					GUILayout.BeginHorizontal();
-					if(GUILayout.Button("load coordinate[s]"))
+
+					if(GUILayout.Button("Load Coordinate[s]", tmpSty) && lists.Any())
 					{
 						ForeGrounder.SetCurrentForground();
 						GetNewImageTarget();
@@ -1055,7 +1066,7 @@ namespace FashionLine
 		public const string FileExt = ".png";
 		public const string FileFilter = "Coordinate Images (*.png)|*.png";
 
-		public static string DefaultCoordDirectory { get => (Directory.GetCurrentDirectory() + "/UserData/coordinate/").MakeDirPath(); }
+		public static string DefaultCoordDirectory { get => (Directory.GetCurrentDirectory() + "/UserData/coordinate/").MakeDirPath("/", "\\"); }
 
 		public static string TargetDirectory { get => Directory.Exists(cfg.lastCoordDir.Value) && !cfg.lastCoordDir.Value.IsNullOrWhiteSpace() ? cfg.lastCoordDir.Value : DefaultCoordDirectory; }
 
@@ -1069,7 +1080,8 @@ namespace FashionLine
 			FashionLine_Core.Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
 
 			var paths = OpenFileDialog.ShowDialog("Add New Coordinate[s] (You can select multiple)",
-			TargetDirectory.MakeDirPath("/", "\\"),
+			Directory.Exists(cfg.lastCoordDir.Value) ?
+			 cfg.lastCoordDir.Value : TargetDirectory,
 			FileFilter,
 			FileExt,
 			OpenFileDialog.MultiFileFlags,
@@ -1081,7 +1093,10 @@ namespace FashionLine
 			cfg.lastCoordDir.Value = path?.Substring(0, path.LastIndexOf('/')) ?? TargetDirectory;
 
 			OnImageTargetObtained(paths);
-			Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+			if(paths.Any())
+				Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+			else
+				Illusion.Game.Utils.Sound.Play(SystemSE.cancel);
 		}
 
 		/// <summary>
@@ -1105,7 +1120,7 @@ namespace FashionLine
 					FashionLine_Core.Logger.LogDebug($"texture path: {Path.Combine(Path.GetDirectoryName(texPath), Path.GetFileName(texPath))}");
 				}
 
-				if(texPath.IsNullOrEmpty())
+				if(texPath.IsNullOrWhiteSpace())
 				{
 					continue;
 				}
@@ -1114,7 +1129,11 @@ namespace FashionLine
 				var filename = texPath.Substring(texPath.LastIndexOf('/') + 1).MakeDirPath();//not sure why this happens on hs2?
 
 				//use file
-				var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLineController>();
+
+				var fashCtrls = InsideStudio ?
+					StudioAPI.GetSelectedControllers<FashionLineController>() :
+					MakerAPI.GetCharacterControl().GetComponents<FashionLineController>();
+
 
 				var coord = new ChaFileCoordinate();
 				coord.LoadFile(texPath);
@@ -1122,14 +1141,16 @@ namespace FashionLine
 				name = !coord.coordinateName.IsNullOrWhiteSpace() ?
 					coord.coordinateName ?? name : name;
 
-
-				fashCtrl.AddFashion(name, new CoordData()
+				var data = new CoordData()
 				{
 					data = File.ReadAllBytes(texPath),
 					name = name,
 					created = File.GetCreationTime(texPath),
 					updated = File.GetLastWriteTime(texPath)
-				});
+				};
+
+				foreach(var ctrl in fashCtrls)
+					ctrl.AddFashion(name, data);
 
 			}
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug($"Exit accept");
@@ -1141,7 +1162,7 @@ namespace FashionLine
 			//	OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT;
 			FashionLine_Core.Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
 
-			var paths = OpenFileDialog.ShowDialog("Add New Coordinate[s] (You can select multiple)",
+			var paths = OpenFileDialog.ShowDialog("Select Background",
 			TargetDirectory.MakeDirPath("/", "\\"),
 			FileFilter,
 			FileExt,

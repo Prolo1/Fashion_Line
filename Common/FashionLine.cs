@@ -71,7 +71,7 @@ namespace FashionLine
 		public const string Description =
 			@"Adds the ability to save coordinate cards to a " +
 			@"character card and use them (Why was this not part of HS2/AI?¯\_(ツ)_/¯)";
-		public const string Version = "0.3.0";
+		public const string Version = "0.3.1";
 
 		internal static new ManualLogSource Logger;
 
@@ -234,7 +234,7 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				//Studio
-				useCreatorDefaultBG = Config.Bind(stud, "Use Creator Defult BG", true,
+				useCreatorDefaultBG = Config.Bind(stud, "Use Creator Default BG", true,
 				new ConfigDescription("Use the creator recommended background as a default 😄", null,
 				new ConfigurationManagerAttributes()
 				{
@@ -243,7 +243,7 @@ namespace FashionLine
 					Browsable = StudioAPI.InsideStudio,
 				})),
 				enableBGUI = Config.Bind(stud, "Enable BG UI", true,
-				new ConfigDescription("Use the creator recommended background as a default 😄", null,
+				new ConfigDescription("Use your own background as a default 😄", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = studx, Browsable = false })),
 				bgUIImagepath = Config.Bind(stud, "BG UI Image Path", "",
 				new ConfigDescription("Use your own background image (will be [gray / creator defult] otherwise)", null,
