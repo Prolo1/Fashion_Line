@@ -6,32 +6,34 @@ using System.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events; 
 using UnityEngine.EventSystems;
+using TMPro;
 
 using BepInEx;
+using KKAPI;
+using KKAPI.Studio;
+using KKAPI.Studio.UI;
 using KKAPI.Utilities;
 using KKAPI.Maker;
 using KKAPI.Maker.UI;
+
+using UniRx;
+using Studio;
+using HarmonyLib;
+using Illusion.Game;
+
 #if HONEY_API
 using AIChara;
 using CharaCustom;
 #else
 using ChaCustom;
 #endif
-using Illusion.Game;
-using KKAPI;
-using KKAPI.Studio;
-using KKAPI.Studio.UI;
+
 using static KKAPI.Maker.MakerAPI;
 using static KKAPI.Studio.StudioAPI;
 using static FashionLine.FashionLine_Core;
 using static FashionLine.FashionLine_Util;
-using UniRx;
-using TMPro;
-using Studio;
-using UnityEngine.Events;
-using System.Text.RegularExpressions;
-using HarmonyLib;
 //using static FashionLine.FashionLine_Util;
 //using static Illusion.Game.Utils;
 
@@ -159,7 +161,7 @@ namespace FashionLine
 
 					if(!cfg.studioWinRec.Value.Equals(winRec))
 						cfg.studioWinRec.Value = new Rect(winRec);
-				}, new GUIContent(ModName)),
+				}, ModName),
 				bgTex,
 				ScaleMode.StretchToFill);
 
@@ -343,8 +345,7 @@ namespace FashionLine
 					{
 
 						var tmporder = costumes.
-						Where(val => Regex.IsMatch(val.Key.translatedName + $" {val.Key.name}", search,
-						RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+						Where(val => (val.Key.translatedName + $" {val.Key.name}").Search(search.Replace(" ", ""))
 						|| search.IsNullOrWhiteSpace()).ToList();
 
 						var sort =
@@ -790,7 +791,7 @@ namespace FashionLine
 					input.ObserveEveryValueChanged((k) => k.text)
 					.Subscribe((val) =>
 					{
-						var rgxOp = RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+						//	var rgxOp = RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
 						//de-activate all
 						fashCtrl.fashionData
@@ -803,14 +804,14 @@ namespace FashionLine
 
 						//find search
 						fashCtrl.fashionData
-						.Where((k) => Regex.IsMatch(k.Value.translatedName + $" {k.Value.name}", val, rgxOp)
+						.Where((k) => (k.Value.translatedName + k.Value.name).Search(val.Replace(" ", ""))
 						|| val.IsNullOrWhiteSpace())
-						.Do((k) =>
-						{
-							var tgl = (Toggle)k.Value.extras.FirstOrNull((obj) => obj is Toggle);
-							if(tgl != null)
-								tgl.transform.parent.gameObject.SetActive(true);
-						});
+							.Do((k) =>
+							{
+								var tgl = (Toggle)k.Value.extras.FirstOrNull((obj) => obj is Toggle);
+								if(tgl != null)
+									tgl.transform.parent.gameObject.SetActive(true);
+							});
 
 					});
 
@@ -830,23 +831,23 @@ namespace FashionLine
 
 			#region Bottom
 			e.AddControl(new MakerToggle(category, "Make FashionLine Persistant", inst))
-				.AddToCustomGUILayout(newVertLine: true)
-				.OnGUIExists((gui) =>
-				{
-					var obj = (MakerToggle)gui;
-					cfg.areCoordinatesPersistant.SettingChanged += isPersistantHndl =
+					.AddToCustomGUILayout(newVertLine: true)
+					.OnGUIExists((gui) =>
+					{
+						var obj = (MakerToggle)gui;
+						cfg.areCoordinatesPersistant.SettingChanged += isPersistantHndl =
 					(s, a) =>
 					{
 						if(obj.Value != cfg.areCoordinatesPersistant.Value)
 							obj.Value = cfg.areCoordinatesPersistant.Value;
 					};
-					isPersistantHndl(null, null);
+						isPersistantHndl(null, null);
 
-					gui.ValueChanged.Subscribe((on) =>
+						gui.ValueChanged.Subscribe((on) =>
 					{
 						cfg.areCoordinatesPersistant.Value = on;
 					});
-				});
+					});
 
 			e.AddControl(new MyMakerButton("Wear Selected", category, inst))
 				.AddToCustomGUILayout(newVertLine: true)
@@ -1153,6 +1154,7 @@ namespace FashionLine
 					ctrl.AddFashion(name, data);
 
 			}
+
 			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug($"Exit accept");
 		}
 

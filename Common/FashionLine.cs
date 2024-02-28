@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Reflection;
 
 using UnityEngine;
 using UnityEngine.Events;
@@ -20,24 +21,25 @@ using BepInEx.Logging;
 using BepInEx.Configuration;
 using ExtensibleSaveFormat;
 using KoiClothesOverlayX;
-
-
-using static FashionLine.FashionLine_Util;
-
 using KK_Plugins.MaterialEditor;
-using System.Reflection;
-using static GUIDrawer;
-using System.Threading;
-using System.Runtime.InteropServices.ComTypes;
-using HarmonyLib;
 
-
+using Studio;
 
 #if HONEY_API
-using AllBrowserFolders = BrowserFolders.AI_BrowserFolders;
-#elif KKS
-using AllBrowserFolders = BrowserFolders.KKS_BrowserFolders;
+using AIChara;
+using CharaCustom;
+#else
+using ChaCustom;
 #endif
+
+using static BepInEx.Logging.LogLevel;
+using static FashionLine.FashionLine_Util;
+ 
+//#if HONEY_API
+//using All_BrowserFolders = BrowserFolders.AI_BrowserFolders;
+//#elif KKS
+//using All_BrowserFolders = BrowserFolders.KKS_BrowserFolders;
+//#endif
 
 namespace FashionLine
 {
@@ -56,9 +58,9 @@ namespace FashionLine
 	// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency),
-	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
-	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(AllBrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency),
+	//// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
+	//// Check documentation of KoikatuAPI.VersionConst for more info.
+	//BepInDependency(All_BrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency),
 	]
 	#endregion
 	// Specify this as a plugin that gets loaded by BepInEx
@@ -77,7 +79,7 @@ namespace FashionLine
 
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
 		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
-		internal static DependencyInfo<AllBrowserFolders> BrowserfolderDependency;
+		//internal static DependencyInfo<All_BrowserFolders> BrowserfolderDependency;
 
 		internal static Texture2D icon = null;
 		internal static Texture2D UIGoku = null;
@@ -119,16 +121,16 @@ namespace FashionLine
 			{
 				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
 				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
-				BrowserfolderDependency = new DependencyInfo<AllBrowserFolders>(new Version(AllBrowserFolders.Version));
+				//BrowserfolderDependency = new DependencyInfo<All_BrowserFolders>(new Version(All_BrowserFolders.Version));
 
 				if(!KoiOverlayDependency.InTargetVersionRange)
-					Logger.LogWarning($"Some functionality may be locked due to the " +
+					Logger.Log(Message | Warning, $"Some functionality may be locked due to the " +
 						$"absence of [{nameof(KoiClothesOverlayMgr)}] " +
 						$"or the use of an incorrect version\n" +
 						$"{KoiOverlayDependency}");
 
 				if(!MatEditerDependency.InTargetVersionRange)
-					Logger.LogWarning($"Some functionality may be locked due to the " +
+					Logger.Log(Message | Warning, $"Some functionality may be locked due to the " +
 							$"absence of [{nameof(MaterialEditorPlugin)}] " +
 							$"or the use of an incorrect version\n" +
 							$"{MatEditerDependency}");
@@ -156,14 +158,14 @@ namespace FashionLine
 					.LoadTexture();
 				memStreme.SetLength(0);
 
-				data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("icon.png")));
-				data.CopyTo(memStreme);
-				icon =
-					memStreme?.GetBuffer()?
-					.LoadTexture();
-				memStreme.SetLength(0);
-				icon.Compress(false);
-				icon.Apply();
+				//data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("icon.png")));
+				//data.CopyTo(memStreme);
+				//icon =
+				//	memStreme?.GetBuffer()?
+				//	.LoadTexture();
+				//memStreme.SetLength(0);
+				//icon.Compress(false);
+				//icon.Apply();
 
 				data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("new icon.png")));
 				data.CopyTo(memStreme);
@@ -203,19 +205,24 @@ namespace FashionLine
 					   },
 				   });
 			}
+
 			int secIndex = 0;
 			int secIndex2 = 99;
+			bool enableBGUI = true;
+			int index = 0;
+
 			string main = "";
 			//string mainx =
 			//$"{secIndex++:d2}. " + main;
+
 			string stud = "Studio";
 			string studx =
 			$"{secIndex++:d2}. " + stud;
+
 			string adv = "Advanced";
 			string advx =
 			$"{secIndex2--:d2}. " + adv;
-			bool enableBGUI = true;
-			int index = 0;
+
 			cfg = new FashionLineConfig()
 			{
 				//main
@@ -253,7 +260,6 @@ namespace FashionLine
 					Category = studx,
 					Browsable = StudioAPI.InsideStudio,
 				})),
-
 
 
 				//Advanced (the rest are in seperate location)
@@ -442,6 +448,7 @@ namespace FashionLine
 					return true;
 				});
 			}
+
 			StartCoroutine(KeyUpdate());
 
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
@@ -580,6 +587,11 @@ namespace FashionLine
 			File.ReadAllBytes(path)?.LoadTexture(TextureFormat.RGBA32) ??
 			(nullReturn ? null : Texture2D.blackTexture);
 
+		public static bool Search(this string str, string ptrn)
+		{
+			int i = -1;
+			return ptrn.All(t => (str = str.Substring(i = str.IndexOf(t) + 1), i > 0).Item2);
+		}
 		public static bool InRange<T>(this IEnumerable<T> list, int index)
 		=> index >= 0 && index < list.Count();
 
@@ -1193,6 +1205,17 @@ namespace FashionLine
 				version = source.version,
 				data = source.data.ToDictionary((p) => p.Key, (p) => p.Value),
 			};
+		}
+
+		public static IEnumerable<T> GetSelectedControllers<T>(this CharaCustomFunctionController ctrl) where T : CharaCustomFunctionController
+		{
+			return from x in StudioAPI.GetSelectedCharacters().Select(delegate (OCIChar x)
+			{
+				ChaControl chaControl = x.GetChaControl();
+				return ((object)chaControl == null) ? null : chaControl.GetComponentInChildren<T>();
+			})
+				   where (UnityEngine.Object)x != (UnityEngine.Object)null
+				   select x;
 		}
 	}
 
