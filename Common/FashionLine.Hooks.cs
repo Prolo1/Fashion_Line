@@ -1,6 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Events;
+using UnityEngine.EventSystems;
+
+using HarmonyLib;
+using KKAPI.Maker;
+using KKAPI.Utilities;
+using Manager;
 
 #if HONEY_API
 using AIChara;
@@ -8,17 +20,6 @@ using CharaCustom;
 #else
 using ChaCustom;
 #endif
-using Manager;
-
-using HarmonyLib;
-using System.IO;
-using UnityEngine.UI;
-using UnityEngine.Events;
-using System.Collections;
-using KKAPI.Maker;
-using KKAPI.Utilities;
-using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace FashionLine
 {
@@ -51,9 +52,9 @@ namespace FashionLine
 
 			static void SetLastSaveLocation(string path) =>
 				LastCoordSaveLocation = path ?? LastCoordSaveLocation;
+
 			static void SetLastCoord(ChaFileCoordinate inst) =>
 				LastCoord = inst ?? LastCoord;
-
 
 			[HarmonyPostfix]
 			[HarmonyPatch(typeof(Button), nameof(Button.OnPointerClick))]
@@ -165,10 +166,12 @@ namespace FashionLine
 				btnFunc();
 #endif
 			}
+
 			public static void OnSaveToFashionLineOnly(Button btn, PointerEventData data)
 			{
 				if(!MakerAPI.InsideMaker) return;
 				if(data.button != PointerEventData.InputButton.Left) return;
+
 
 #if HONEY_API
 				if(btn == null) return;
@@ -266,6 +269,7 @@ namespace FashionLine
 				}
 				btnFunc();
 #endif
+
 			}
 		}
 	}
