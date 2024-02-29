@@ -5,34 +5,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
+using UnityEngine;
+
 using KKAPI;
 using KKAPI.Chara;
 using KKAPI.Maker;
 using KKAPI.Utilities;
 using ExtensibleSaveFormat;
-
-using UnityEngine;
+using KK_Plugins.MaterialEditor;
+using KoiClothesOverlayX;
+using Manager;
+//using BrowserFolders;
 
 #if HONEY_API
 using AIChara;
 #else
 using ChaCustom;
 #endif
-using Manager;
-
-using BrowserFolders;
-using KK_Plugins.MaterialEditor;
-using KoiClothesOverlayX;
 
 using static BepInEx.Logging.LogLevel;
 using static FashionLine.FashionLine_Util;
 using static FashionLine.FashionLine_Core;
-#if HONEY_API
-using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
 
-#elif KKS
-using MyBrowserFolders = BrowserFolders.KKS_BrowserFolders;
-#endif
+//#if HONEY_API
+//using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
+//
+//#elif KKS
+//using MyBrowserFolders = BrowserFolders.KKS_BrowserFolders;
+//#endif
 
 namespace FashionLine
 {
