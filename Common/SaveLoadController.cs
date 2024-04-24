@@ -22,6 +22,8 @@ using Manager;
 #endif
 
 using static BepInEx.Logging.LogLevel;
+
+
 //using AIProject;
 
 /*
@@ -82,6 +84,7 @@ namespace FashionLine
 	/// </summary>
 	public class CurrentSaveLoadController : SaveLoadControllerV1
 	{
+		
 		public new int Version => base.Version + 1;
 		public new string[] DataKeys => new[]
 		{ "FashionData_Data" };
@@ -105,6 +108,7 @@ namespace FashionLine
 				if(data != null && data.version == base.Version)
 				{
 					var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadControllerV1.LoadDataType.Data]], CompositeResolver.Instance);
+
 
 					data.data[DataKeys[(int)LoadDataType.Data]] =
 						LZ4MessagePackSerializer.Serialize(oldData.ToDictionary(k => k.Key,

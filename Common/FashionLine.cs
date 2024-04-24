@@ -33,8 +33,8 @@ using ChaCustom;
 #endif
 
 using static BepInEx.Logging.LogLevel;
-using static FashionLine.FashionLine_Util;
- 
+using static FashionLine.Fash_Util;
+
 //#if HONEY_API
 //using All_BrowserFolders = BrowserFolders.AI_BrowserFolders;
 //#elif KKS
@@ -124,13 +124,13 @@ namespace FashionLine
 				//BrowserfolderDependency = new DependencyInfo<All_BrowserFolders>(new Version(All_BrowserFolders.Version));
 
 				if(!KoiOverlayDependency.InTargetVersionRange)
-					Logger.Log(Message | Warning, $"Some functionality may be locked due to the " +
+					Logger.Log(Message | Warning, $"Some [{ModName}] functionality may be locked due to the " +
 						$"absence of [{nameof(KoiClothesOverlayMgr)}] " +
 						$"or the use of an incorrect version\n" +
 						$"{KoiOverlayDependency}");
 
 				if(!MatEditerDependency.InTargetVersionRange)
-					Logger.Log(Message | Warning, $"Some functionality may be locked due to the " +
+					Logger.Log(Message | Warning, $"Some [{ModName}] functionality may be locked due to the " +
 							$"absence of [{nameof(MaterialEditorPlugin)}] " +
 							$"or the use of an incorrect version\n" +
 							$"{MatEditerDependency}");
@@ -144,13 +144,13 @@ namespace FashionLine
 			}
 
 			//Embeded Resources
+			using(MemoryStream memStreme = new MemoryStream())
 			{
 				/**This stuff will be used later*/
 				var assembly = Assembly.GetExecutingAssembly();
 				var resources = assembly.GetManifestResourceNames();
 				Logger.LogDebug($"\nResources:\n[{string.Join(", ", resources)}]");
 
-				MemoryStream memStreme = new MemoryStream();
 				var data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("ultra instinct.jpg")));
 				data.CopyTo(memStreme);
 				UIGoku =
@@ -208,8 +208,8 @@ namespace FashionLine
 
 			int secIndex = 0;
 			int secIndex2 = 99;
-			bool enableBGUI = true;
 			int index = 0;
+			//bool enableBGUI = true;
 
 			string main = "";
 			//string mainx =
@@ -432,30 +432,27 @@ namespace FashionLine
 			};
 
 
-			IEnumerator KeyUpdate()
-			{
-				yield return new WaitWhile(() =>
-				{
-					var list = GetAllChaFuncCtrlOfType<FashionLineController>();
-					if(cfg.nextInLine.Value.IsDown())
-						foreach(var ctrl in list)
-							ctrl.NextInLine();
 
-					if(cfg.prevInLine.Value.IsDown())
-						foreach(var ctrl in list)
-							ctrl.PrevInLine();
-
-					return true;
-				});
-			}
-
-			StartCoroutine(KeyUpdate());
 
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
 			Hooks.Init();
 			FashionLine_GUI.Init();
 
 			//Instantiate(new GameObject(), null).AddComponent<Canvas>();
+		}
+
+		void Update()
+		{
+			//Key Updates
+			var list = GetAllChaFuncCtrlOfType<FashionLineController>();
+			if(cfg.nextInLine.Value.IsDown())
+				foreach(var ctrl in list)
+					ctrl.NextInLine();
+
+			if(cfg.prevInLine.Value.IsDown())
+				foreach(var ctrl in list)
+					ctrl.PrevInLine();
+
 		}
 
 		void CfgUpdate()
@@ -539,7 +536,7 @@ namespace FashionLine
 		}
 	}
 
-	public static class FashionLine_Util
+	public static class Fash_Util
 	{
 		static FashionLine_Core Instance { get => FashionLine_Core.Instance; }
 		static FashionLine_Core.FashionLineConfig cfg { get => FashionLine_Core.cfg; }
@@ -594,6 +591,10 @@ namespace FashionLine
 		}
 		public static bool InRange<T>(this IEnumerable<T> list, int index)
 		=> index >= 0 && index < list.Count();
+		public static bool InRange<T>(this T src, T min, T max) where T : IComparable
+			=> src.CompareTo(max) <= 0 && src.CompareTo(min) >= 0;
+
+
 
 		/// <summary>
 		/// Adds a value to the end of a list and returns it

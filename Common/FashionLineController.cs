@@ -24,7 +24,7 @@ using ChaCustom;
 #endif
 
 using static BepInEx.Logging.LogLevel;
-using static FashionLine.FashionLine_Util;
+using static FashionLine.Fash_Util;
 using static FashionLine.FashionLine_Core;
 
 //#if HONEY_API

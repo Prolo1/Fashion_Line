@@ -34,7 +34,9 @@ namespace FashionLine
 		{
 			public static void Init()
 			{
-				Harmony.CreateAndPatchAll(typeof(Hooks), GUID);
+				var harm = Harmony.CreateAndPatchAll(typeof(Hooks), GUID);
+
+				//	harm.UnpatchSelf();//for pausing Hook execution 
 			}
 
 			[HarmonyPrefix]
