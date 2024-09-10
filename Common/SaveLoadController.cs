@@ -84,7 +84,7 @@ namespace FashionLine
 	/// </summary>
 	public class CurrentSaveLoadController : SaveLoadControllerV1
 	{
-		
+
 		public new int Version => base.Version + 1;
 		public new string[] DataKeys => new[]
 		{ "FashionData_Data" };
@@ -99,12 +99,12 @@ namespace FashionLine
 		/// </summary>
 		/// <param name="data"></param>
 		/// <returns></returns>
-		protected new PluginData UpdateVersionFromPrev(FashionLineController ctrler, PluginData data)
+		protected new PluginData UpdateVersionFromPrev(FashionLineController ctrl, PluginData data)
 		{
 
 			if(data == null || data?.version != Version)
 			{
-				data = base.Load(ctrler, data)?.Copy();
+				data = base.UpdateVersionFromPrev(ctrl, data)?.Copy();
 				if(data != null && data.version == base.Version)
 				{
 					var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadControllerV1.LoadDataType.Data]], CompositeResolver.Instance);
@@ -116,6 +116,7 @@ namespace FashionLine
 						{
 							var tmp = new CoordData() { data = v.Value.data, name = v.Value.name };
 							tmp.extras.AddRange(v.Value.extras);
+
 							return tmp;
 						}), CompositeResolver.Instance);
 
@@ -127,7 +128,7 @@ namespace FashionLine
 			}
 
 			if(data == null)
-				data = ctrler?.GetExtendedData(true);
+				data = ctrl?.GetExtendedData(true);
 
 			return data;
 		}
@@ -161,7 +162,7 @@ namespace FashionLine
 			return data;
 		}
 
-		public override PluginData Save(FashionLineController ctrler, PluginData data = null)
+		public override PluginData Save(FashionLineController ctrl, PluginData data = null)
 		{
 			if(data == null)
 				data = new PluginData();
@@ -169,7 +170,6 @@ namespace FashionLine
 
 			try
 			{
-				var ctrl = (FashionLineController)ctrler;
 
 				if(ctrl.fashionData == null)
 					throw new Exception("No FashionLine Data to be Saved 😮");
@@ -189,7 +189,7 @@ namespace FashionLine
 				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
-			ctrler.SetExtendedData(data);
+			ctrl.SetExtendedData(data);
 
 			return data;
 		}
@@ -214,84 +214,22 @@ namespace FashionLine
 		/// <returns></returns>
 		protected override PluginData UpdateVersionFromPrev(FashionLineController ctrler, PluginData data)
 		{
-			var ctrl = (FashionLineController)ctrler;
-
-
-			//if(data == null || data.version != Version)
-			//{
-			//
-			//	data = base.Load(ctrler, data)?.Copy();
-			//	
-			//	//CharaMorpher_Core.Logger.LogDebug($"Old version: {data?.version.ToString() ?? "Don't exist..."}");
-			//}
-
 			if(data == null)
 				data = ctrler?.GetExtendedData(true);
 
 			return data;
 		}
 
+		public override PluginData Save(FashionLineController ctrler, PluginData data)
+		{
+			throw new NotImplementedException();
+		}
+
 		public override PluginData Load(FashionLineController ctrler, PluginData data)
 		{
-			var ctrl = (FashionLineController)ctrler;
-
-			data = UpdateVersionFromPrev(ctrler, data);// use if version goes up (i.e. 1->2)
-
-			if(data == null) return null;
-
-			try
-			{
-				if(data.version != Version) return data;//needs to return data
-
-				var carddata = LZ4MessagePackSerializer.Deserialize<Dictionary<string, CoordData>>((byte[])data.data[DataKeys[((int)LoadDataType.Data)]], CompositeResolver.Instance);
-
-				if(carddata == null) throw new Exception("Data does not exist");
-
-				//FashionLine_Core.Logger.LogInfo($"cardata count: {carddata.Count}");
-				foreach(var line in carddata)
-					ctrl.AddFashion(line.Key, line.Value, overwrite: true);
-			}
-			catch(Exception e)
-			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not load PluginData:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
-				return null;
-			}
-
-			return data;
+			throw new NotImplementedException();
 		}
 
-		public override PluginData Save(FashionLineController ctrler, PluginData data = null)
-		{
-			if(data == null)
-				data = new PluginData() { version = Version };
-
-			try
-			{
-				var ctrl = (FashionLineController)ctrler;
-
-				if(ctrl.fashionData == null)
-					throw new Exception("No FashionLine Data to be Saved 😮");
-				if(ctrl.fashionData.Count <= 0) return null;
-
-				var dataLine = ctrl.fashionData.ToDictionary((k) => k.Key, (v) => v.Value.Clone());
-				foreach(var fashion in dataLine)
-					for(int a = 0; a < fashion.Value.extras.Count; ++a)
-						if(fashion.Value.extras[a] is Toggle)
-							fashion.Value.extras.Remove(fashion.Value.extras[a--]);
-
-				data.data[DataKeys[((int)LoadDataType.Data)]] = LZ4MessagePackSerializer.Serialize(dataLine, CompositeResolver.Instance);
-			}
-			catch(Exception e)
-			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
-				return null;
-			}
-			ctrler.SetExtendedData(data);
-
-			return data;
-		}
 
 		#region Old Classes
 		public class OldCoordData

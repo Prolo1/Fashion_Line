@@ -493,11 +493,8 @@ namespace FashionLine
 #if HONEY_API
 					MakerCategory peram = MakerConstants.Parameter.Type;
 #else
-					MakerCategory peram = MakerConstants.Parameter.QA;
+					MakerCategory peram = MakerConstants.Parameter.Character;
 #endif
-
-
-
 
 					category = new MakerCategory(peram.CategoryName, subCategoryName, displayName: displayName);
 					// category2 = new MakerCategory(MakerConstants.Clothes.CategoryName, "Save / Delete");
@@ -621,7 +618,6 @@ namespace FashionLine
 				};
 				MakerExiting += (s, e) => { Cleanup(); };
 			}
-
 		}
 
 		static void Cleanup()
@@ -790,7 +786,7 @@ namespace FashionLine
 					});
 				});
 
-			e.AddControl(new MakerTextbox(settingName: "Search:", defaultValue: "", category: category, owner: inst))
+			e.AddControl(new MakerTextbox(settingName: "", defaultValue: "", category: category, owner: inst))
 				.AddToCustomGUILayout(topUI: true, newVertLine: true)
 				.OnGUIExists((gui) =>
 				{

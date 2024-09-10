@@ -187,16 +187,17 @@ namespace FashionLine
 					throw new Exception($"The CoordData [{data.name}] does not exist in list");
 
 				var tmp = data;
-				var name = fashionData.FirstOrNull((v) => v.Value == tmp).Key;
+				var name = fashionData.First((v) => v.Value == tmp).Key;
 				fashionData.Remove(name);
 
 				if(!MakerAPI.InsideMaker) return;
 				FashionLine_GUI.RemoveCoordinate(in data);
 			}
+
 			catch(Exception e)
 			{
 				FashionLine_Core.Logger.Log(Message | Error,
-					$"Could not remove [{data.name}] from FashionLine:\n{e.Message}");
+					$"Could not remove [{data?.name ?? ""}] from FashionLine:\n{e.Message}");
 				FashionLine_Core.Logger.Log(Error, $"{e.TargetSite}\n{e.StackTrace}\n");
 			}
 		}
@@ -244,14 +245,15 @@ namespace FashionLine
 				if(isFile)
 				{
 
-					MemoryStream stream = new MemoryStream(costume.data);
-					if(!ChaControl.nowCoordinate.LoadFile(stream
-#if HONEY_API
-					, (int)Singleton<GameSystem>.Instance.language
-#endif
-					))
+					using(MemoryStream stream = new MemoryStream(costume.data))
 					{
-						FashionLine_Core.Logger.Log(Warning | Message, $"Could not read card [{costume.name}]. Data size [{costume.data.Length}]");
+						if(!ChaControl.nowCoordinate.LoadFile(stream
+#if HONEY_API
+						, (int)Singleton<GameSystem>.Instance.language
+#endif
+						))
+							FashionLine_Core.Logger.Log(Warning | Message, $"Could not read card [{costume.name}]. Data size [{costume.data.Length}]");
+
 						//return;
 					}
 				}
@@ -427,6 +429,8 @@ namespace FashionLine
 				return trans ?? name;
 			}
 		}
+
+
 
 		public readonly List<object> extras = new List<object>();
 

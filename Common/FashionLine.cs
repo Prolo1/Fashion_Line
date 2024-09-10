@@ -34,6 +34,7 @@ using ChaCustom;
 
 using static BepInEx.Logging.LogLevel;
 using static FashionLine.Fash_Util;
+using UniRx;
 
 //#if HONEY_API
 //using All_BrowserFolders = BrowserFolders.AI_BrowserFolders;
@@ -67,7 +68,8 @@ namespace FashionLine
 	[BepInPlugin(GUID, ModName, Version)]
 	public partial class FashionLine_Core : BaseUnityPlugin
 	{
-		public static FashionLine_Core Instance;
+
+		#region Variables
 		public const string ModName = "Fashion Line";
 		public const string GUID = "prolo.fashionline";//never change this
 		public const string Description =
@@ -75,6 +77,7 @@ namespace FashionLine
 			@"character card and use them (Why was this not part of HS2/AI?¯\_(ツ)_/¯)";
 		public const string Version = "0.3.3";
 
+		public static FashionLine_Core Instance;
 		internal static new ManualLogSource Logger;
 
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
@@ -111,6 +114,7 @@ namespace FashionLine
 			public ConfigEntry<string> lastCoordDir;
 
 		}
+		#endregion
 
 		void Awake()
 		{
@@ -144,19 +148,34 @@ namespace FashionLine
 			}
 
 			//Embeded Resources
-			using(MemoryStream memStreme = new MemoryStream())
+			using(MemoryStream memStream = new MemoryStream())
 			{
-				/**This stuff will be used later*/
 				var assembly = Assembly.GetExecutingAssembly();
 				var resources = assembly.GetManifestResourceNames();
-				Logger.LogDebug($"\nResources:\n[{string.Join(", ", resources)}]");
+				MemoryStream ResourceGrabber(string name, Assembly ass = null, string[] res = null, MemoryStream mem = null)
+				{
+					/**This stuff will be used later*/
+					//Logger.LogDebug($"\nResources:\n[{string.Join(", ", resources)}]");
+					ass = ass ?? Assembly.GetExecutingAssembly();
+					res = res ?? ass.GetManifestResourceNames();
+					var data = ass.GetManifestResourceStream(res.FirstOrDefault((txt) => (txt.ToLower()).Contains(name)) ?? " ");
+					mem = mem ?? new MemoryStream();
+#if KK
+					mem.SetLength(0);//Clear Buffer 
+					mem.Write(data.ReadAllBytes(), 0, (int)data.Length);//write Buffer
+#else
+					memStream.SetLength(0);//Clear Buffer 
+					data?.CopyTo(memStream);
+#endif
+					return mem;
+				}
 
-				var data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("ultra instinct.jpg")));
-				data.CopyTo(memStreme);
+				//var data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("ultra instinct.jpg")));
+				//data.CopyTo(memStreme);
+				ResourceGrabber("ultra instinct.jpg", assembly, resources, memStream);
 				UIGoku =
-					memStreme?.GetBuffer()?
+					memStream?.GetBuffer()?
 					.LoadTexture();
-				memStreme.SetLength(0);
 
 				//data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("icon.png")));
 				//data.CopyTo(memStreme);
@@ -167,12 +186,13 @@ namespace FashionLine
 				//icon.Compress(false);
 				//icon.Apply();
 
-				data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("new icon.png")));
-				data.CopyTo(memStreme);
+				//data = assembly.GetManifestResourceStream(resources.FirstOrDefault((txt) => txt.ToLower().Contains("new icon.png")));
+				//data.CopyTo(memStreme);
+				ResourceGrabber("new icon.png", assembly, resources, memStream);
 				iconBG =
-					memStreme?.GetBuffer()?
+					memStream?.GetBuffer()?
 					.LoadTexture();
-				memStreme.SetLength(0);
+				memStream.SetLength(0);
 				iconBG.Compress(false);
 				iconBG.Apply();
 
@@ -432,8 +452,6 @@ namespace FashionLine
 			};
 
 
-
-
 			CharacterApi.RegisterExtraBehaviour<FashionLineController>(GUID);
 			Hooks.Init();
 			FashionLine_GUI.Init();
@@ -479,65 +497,9 @@ namespace FashionLine
 
 	}
 
-	public class DependencyInfo<T> where T : BaseUnityPlugin
-	{
-		public DependencyInfo(Version minTargetVer = null, Version maxTargetVer = null)
-		{
-			plugin = (T)GameObject.FindObjectOfType(typeof(T));
-			Exists = plugin != null;
-			MinTargetVersion = minTargetVer ?? new Version();
-			MaxTargetVersion = maxTargetVer ?? new Version();
-			InTargetVersionRange = Exists &&
-				((CurrentVersion = plugin?.Info.Metadata.Version
-				?? new Version()) >= MinTargetVersion);
-
-			if(maxTargetVer != null && maxTargetVer >= MinTargetVersion)
-				InTargetVersionRange &= Exists && (CurrentVersion <= MaxTargetVersion);
-		}
-
-		/// <summary>
-		/// plugin reference
-		/// </summary>
-		public readonly T plugin = null;
-		/// <summary>
-		/// does the mod exist
-		/// </summary>
-		public bool Exists { get; } = false;
-		/// <summary>
-		/// Current version matches or exceeds the min target mod version. 
-		/// if a max is set it will also make sure the mod is within range.
-		/// </summary>
-		public bool InTargetVersionRange { get; } = false;
-		/// <summary>
-		/// min version this mod expects
-		/// </summary>
-		public Version MinTargetVersion { get; } = null;
-		/// <summary>
-		/// max version this mod expects
-		/// </summary>
-		public Version MaxTargetVersion { get; } = null;
-		/// <summary>
-		/// version that is actually downloaded in the game
-		/// </summary>
-		public Version CurrentVersion { get; } = null;
-
-		public void PrintExistsMsg()
-		{
-
-		}
-
-		public override string ToString()
-		{
-			return
-				$"Plugin Name: {plugin?.Info.Metadata.Name ?? "Null"}\n" +
-				$"Current version: {CurrentVersion?.ToString() ?? "Null"}\n" +
-				$"Min Target Version: {MinTargetVersion}\n" +
-				$"Max Target Version: {MaxTargetVersion}\n";
-		}
-	}
-
 	public static class Fash_Util
 	{
+		internal static ManualLogSource Logger { get => FashionLine_Core.Logger; }
 		static FashionLine_Core Instance { get => FashionLine_Core.Instance; }
 		static FashionLine_Core.FashionLineConfig cfg { get => FashionLine_Core.cfg; }
 		public static readonly CurrentSaveLoadController saveload = new CurrentSaveLoadController();
@@ -559,6 +521,7 @@ namespace FashionLine
 				return _greyTex;
 			}
 		}
+
 
 
 		public static PluginData SaveExtData(this FashionLineController ctrl)
@@ -586,8 +549,8 @@ namespace FashionLine
 
 		public static bool Search(this string str, string ptrn)
 		{
-			int i = -1;
-			return ptrn.All(t => (str = str.Substring(i = str.IndexOf(t) + 1), i > 0).Item2);
+			int i = -1;//check if each character is one after the other
+			return ptrn.All(t => Tuple.Create(str = str.Substring(i = str.IndexOf(t) + 1), i > 0).Item2);
 		}
 		public static bool InRange<T>(this IEnumerable<T> list, int index)
 		=> index >= 0 && index < list.Count();
@@ -609,7 +572,6 @@ namespace FashionLine
 			return list.Last();
 		}
 
-
 		/// <summary>
 		/// 
 		/// </summary>
@@ -622,11 +584,10 @@ namespace FashionLine
 
 			IEnumerator func(T gui1, UnityAction<T> act1)
 			{
-				if(!gui1.Exists)
-					yield return new WaitUntil(() => gui1.Exists);//the thing neeeds to exist first
+				while(!gui1.Exists)
+					yield return new WaitForEndOfFrame();//the thing neeeds to exist first
 
 				act1(gui);
-
 				yield break;
 			}
 			Instance.StartCoroutine(func(gui, act));
@@ -634,51 +595,31 @@ namespace FashionLine
 			return gui;
 		}
 
-		public static T FirstOrNull<T>(this IEnumerable<T> enu)
+		public static T FirstOrNull<T>(this IEnumerable<T> enu) where T : class
+		{
+			//I love loopholes 🤣
+			try
+			{ return enu.First(); }
+			catch { return null; }
+		}
+		public static T FirstOrNull<T>(this IEnumerable<T> enu, Func<T, bool> predicate) where T : class
+		{
+			//I love loopholes 🤣
+			try
+			{ return enu.First(predicate); }
+			catch { return null; }
+		}
+		public static T LastOrNull<T>(this IEnumerable<T> enu) where T : class
 		{
 			try
-			{
-				var val = enu.Count() > 0 ? enu.First() : (T)(object)null;
-				return val;
-			}
-			catch
-			{
-				try
-				{
-					return (T)(object)null;
-
-				}
-				catch { throw new Exception("This object is not nullable"); }
-			}
+			{ return enu.Last(); }
+			catch { return null; }
 		}     //I love loopholes 🤣
-		public static T FirstOrNull<T>(this IEnumerable<T> enu, Func<T, bool> predicate)
+		public static T LastOrNull<T>(this IEnumerable<T> enu, Func<T, bool> predicate) where T : class
 		{
 			try
-			{
-				var val = enu.Count() > 0 ? enu.First(predicate) : (T)(object)null;
-				return val;
-			}
-			catch
-			{
-				try
-				{
-					return (T)(object)null;
-
-				}
-				catch { throw new Exception("This object is not nullable"); }
-			}
-		}   //I love loopholes 🤣
-		public static T LastOrNull<T>(this IEnumerable<T> enu)
-		{
-			try
-			{ return enu.Count() > 0 ? enu.Last() : (T)(object)null; }
-			catch { return (T)(object)null; }
-		}     //I love loopholes 🤣
-		public static T LastOrNull<T>(this IEnumerable<T> enu, Func<T, bool> predicate)
-		{
-			try
-			{ return enu.Count() > 0 ? enu.Last(predicate) : (T)(object)null; }
-			catch { return (T)(object)null; }
+			{ return enu.Last(predicate); }
+			catch { return null; }
 		}   //I love loopholes 🤣
 
 		public static GameObject ScaleToParent2D(this GameObject obj, float pwidth = 1, float pheight = 1, bool changewidth = true, bool changeheight = true)
@@ -715,6 +656,21 @@ namespace FashionLine
 			comp?.gameObject.ScaleToParent2D(pwidth: pwidth, pheight: pheight, changewidth: width, changeheight: height);
 			return comp;
 		}
+
+		public static T GetComponentInParent<T>(this GameObject obj) where T : Component
+		{
+			Transform search = obj.transform;
+			T ans = null;
+			while(search && ans == null)
+			{
+				ans = search.GetComponent<T>();
+				search = search.parent;
+			}
+			return ans;
+		}
+		public static T GetComponentInParent<T>(this Component obj) where T : Component =>
+			GetComponentInParent<T>(obj.gameObject);
+
 
 		public static IEnumerable<T> GetComponentsInChildren<T>(this GameObject obj, int depth) =>
 			 obj.GetComponentsInChildren<T>().Attempt((v1) =>
@@ -872,25 +828,48 @@ namespace FashionLine
 
 		public static T AddToCustomGUILayout<T>(this T gui, bool topUI = false, float pWidth = -1, float viewpercent = -1, bool newVertLine = true) where T : BaseGuiEntry
 		{
-			gui.OnGUIExists(g =>
+#if true //TODO: fix new UI loading in KK
+			gui?.OnGUIExists(g =>
 			{
-				Instance.StartCoroutine(g.AddToCustomGUILayoutCO
-				(topUI, pWidth, viewpercent, newVertLine));
+				Instance.StartCoroutine(g.AddToCustomGUILayoutCO(topUI, pWidth, viewpercent, newVertLine));
+
+				//await g.AddToCustomGUILayoutCO(topUI, pWidth, viewpercent, newVertLine);
 			});
+#endif
 			return gui;
 		}
 
-		static IEnumerator AddToCustomGUILayoutCO<T>(this T gui, bool topUI = false, float pWidth = -1, float viewpercent = -1, bool newVertLine = true) where T : BaseGuiEntry
+		static IEnumerator AddToCustomGUILayoutCO<T>(this T gui, bool topUI = false, float pWidth = -1, float viewpercent = -1, bool newVertLine = true, GameObject ctrlObj = null) where T : BaseGuiEntry
 		{
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("moving object");
+			if(cfg.debug.Value) Logger.LogDebug("moving object");
 
-			yield return new WaitWhile(() => gui?.ControlObject?.GetComponentInParent<ScrollRect>()?.transform == null);
+			ctrlObj = ctrlObj ?? gui.ControlObject;
+
+			//await Func();
+			//async Task Func()
+			//{
+			//	UnityEngine.Debug.Log("We Made it here");
+			//	Logger.LogInfo("Looking for scrollrect?");
+			//	while(ctrlObj?.GetComponentInParent<ScrollRect>() == null)
+			//	{
+			//		await Task.Delay(1000);
+			//		ctrlObj = ctrlObj ?? gui.ControlObject;
+			//	}
+			//	UnityEngine.Debug.Log("We Made it here Too");
+			//	Logger.LogInfo("scrollrect found!!!");
+			//}
+
+			if(ctrlObj == null)
+				yield return new WaitWhile(() => ctrlObj?.GetComponentInParent<ScrollRect>() == null);
+
+
+
 
 			//	newVertLine = horizontal ? newVertLine : true;
 #if HONEY_API
 			if(gui is MakerText)
 			{
-				var piv = (Vector2)gui.ControlObject?
+				var piv = (Vector2)ctrlObj?
 					.GetComponentInChildren<Text>()?
 					.rectTransform.pivot;
 				piv.x = -.5f;
@@ -898,16 +877,17 @@ namespace FashionLine
 			}
 #endif
 
-			var ctrlObj = gui.ControlObject;
 
 			var scrollRect = ctrlObj.GetComponentInParent<ScrollRect>();
-			var par = ctrlObj.GetComponentInParent<ScrollRect>().transform;
+			var par = scrollRect.transform;
 
 
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("Parent: " + par);
+			if(cfg.debug.Value) Logger.LogDebug("Parent: " + par);
 
+			int countcheck = 0;
 
 			//setup VerticalLayoutGroup
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
 			var vlg = scrollRect.gameObject.GetOrAddComponent<VerticalLayoutGroup>();
 
 #if HONEY_API
@@ -924,6 +904,7 @@ namespace FashionLine
 
 			//This fixes the KOI_API rendering issue & enables scrolling over viewport (not elements tho)
 			//Also a sizing issue in Honey_API
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
 #if KOI_API
 			scrollRect.GetComponent<Image>().sprite = scrollRect.content.GetComponent<Image>()?.sprite;
 			scrollRect.GetComponent<Image>().color = (Color)scrollRect.content.GetComponent<Image>()?.color;
@@ -941,11 +922,14 @@ namespace FashionLine
 #endif
 
 			//Setup LayoutElements 
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
 			scrollRect.verticalScrollbar.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
 			scrollRect.content.GetOrAddComponent<LayoutElement>().ignoreLayout = true;
 
 			var viewLE = scrollRect.viewport.GetOrAddComponent<LayoutElement>();
+#if !KK
 			viewLE.layoutPriority = 1;
+#endif
 			viewLE.minWidth = -1;
 			viewLE.flexibleWidth = -1;
 			gui.ResizeCustomUIViewport(viewpercent);
@@ -954,44 +938,69 @@ namespace FashionLine
 			Transform layoutObj = null;
 			//Create  LayoutElement
 			//if(horizontal)
+
+			//Create Layout Element GameObject
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+
+			GameObject CreateGameObject(string name, Transform parent = null)
 			{
-				//Create Layout Element GameObject
+				var tmp = new GameObject(name);
+				tmp.transform.parent = parent;
+				return tmp;
+			}
+
+
+			act1();
+			void act1()
+			{
 				par = newVertLine ?
-					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform :
+					CreateGameObject("LayoutElement", par)?.transform :
 					par.GetComponentsInChildren<HorizontalLayoutGroup>(2)
 					.LastOrNull((elem) => elem.GetComponent<HorizontalLayoutGroup>())?.transform.parent ??
-					GameObject.Instantiate<GameObject>(new GameObject("LayoutElement"), par)?.transform;
+					CreateGameObject("LayoutElement", par)?.transform;
 
-				layoutObj = par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
+				//await Task.Yield();
+
+				layoutObj = par = par.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
+			}
 
 
-				//calculate base GameObject sizeing
-				var ele = par.GetOrAddComponent<LayoutElement>();
-				ele.minWidth = -1;
-				ele.minHeight = -1;
-				ele.preferredHeight = Math.Max(ele?.preferredHeight ?? -1, ctrlObj.GetOrAddComponent<LayoutElement>()?.minHeight ?? ele?.preferredHeight ?? -1);
-				ele.preferredWidth =
+
+			//calculate base GameObject sizeing
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+			var ele = par.GetOrAddComponent<LayoutElement>();
+			ele.minWidth = -1;
+			ele.minHeight = -1;
+			ele.preferredHeight = System.Math.Max(ele?.preferredHeight ?? -1, ctrlObj.GetOrAddComponent<LayoutElement>()?.minHeight ?? ele?.preferredHeight ?? -1);
+			ele.preferredWidth =
 #if HONEY_API
-				scrollRect.GetComponent<RectTransform>().rect.width;
+			scrollRect.GetComponent<RectTransform>().rect.width;
 #else
 				//viewLE.minWidth;
 				0;
 #endif
 
-				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputHorizontal();
-				par.GetComponentInParent<VerticalLayoutGroup>().CalculateLayoutInputVertical();
+			var lgtmp = GetComponentInParent<VerticalLayoutGroup>(par.gameObject);
+			lgtmp.CalculateLayoutInputHorizontal();
+			lgtmp.CalculateLayoutInputVertical();
 
 
-				//Create and Set Horizontal Layout Settings
+			//Create and Set Horizontal Layout Settings
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+			act2();
+			void act2()
+			{
 
 				par = par.GetComponentsInChildren<HorizontalLayoutGroup>(2)?
 					.FirstOrNull((elem) => elem.gameObject.GetComponent<HorizontalLayoutGroup>())?.transform ??
 					GameObject.Instantiate<GameObject>(new GameObject("HorizontalLayoutGroup"), par)?.transform;
 				par = par.gameObject.GetOrAddComponent<RectTransform>().transform;//May need this line (I totally do)
 
+				//	await Task.Yield();
 
 				var layout = par.GetOrAddComponent<HorizontalLayoutGroup>();
 
+				//	await Task.Yield();
 
 				layout.childControlWidth = true;
 				layout.childControlHeight = true;
@@ -1000,25 +1009,37 @@ namespace FashionLine
 				layout.childAlignment = TextAnchor.MiddleCenter;
 
 				par?.ScaleToParent2D();
+			};
+
+			//yield return null;//wait for other elements to appear
+
+			//Add layout elements to control object children
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+			for(int a = 0; a < ctrlObj.transform.childCount; ++a)
+			{
+				ele = ctrlObj.transform.GetChild(a).GetOrAddComponent<LayoutElement>();
+				ele.preferredHeight = ele.GetComponent<RectTransform>().rect.height;
+				ele.preferredWidth = pWidth > 0 ? scrollRect.rectTransform.rect.width * pWidth / par.transform.childCount / ctrlObj.transform.childCount : -1;
 
 			}
 
-
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("setting as first/last");
-
 			//remove extra LayoutElements
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
 			var rList = ctrlObj.GetComponents<LayoutElement>();
 			for(int a = 1; a < rList.Length; ++a)
 				GameObject.DestroyImmediate(rList[a]);
 
+
 			//change child layoutelements
-			foreach(var val in ctrlObj.GetComponentsInChildren<LayoutElement>())
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+			foreach(var val in ctrlObj.GetComponentsInChildren<LayoutElement>(0))
 				if(val.gameObject != ctrlObj)
 					val.flexibleWidth = val.minWidth = val.preferredWidth = -1;
 
 
 			//edit layoutgroups
-			foreach(var val in ctrlObj.GetComponentsInChildren<HorizontalLayoutGroup>())
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+			foreach(var val in ctrlObj.GetComponentsInChildren<HorizontalLayoutGroup>(0))
 			//	if(val.gameObject != ctrlObj)
 			{
 				val.childControlWidth = true;
@@ -1027,6 +1048,8 @@ namespace FashionLine
 			}
 
 			//Set this object's Layout settings
+			if(cfg.debug.Value) Logger.LogDebug("Check: " + ++countcheck);
+			if(cfg.debug.Value) Logger.LogDebug("setting as first/last");
 			ctrlObj.transform.SetParent(par, false);
 			ctrlObj.GetComponent<RectTransform>().pivot = new Vector2(0, 1);
 			var apos = ctrlObj.GetComponent<RectTransform>().anchoredPosition; apos.x = 0;
@@ -1042,7 +1065,9 @@ namespace FashionLine
 			//if(ctrlObj.GetComponent<LayoutElement>())
 			//	GameObject.Destroy(ctrlObj.GetComponent<LayoutElement>());
 			var thisLE = ctrlObj.GetOrAddComponent<LayoutElement>();
+#if !KK
 			thisLE.layoutPriority = 5;
+#endif
 			thisLE.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
 			bool check = thisLE.transform.childCount > 1 &&
 				!thisLE.GetComponent<HorizontalOrVerticalLayoutGroup>();
@@ -1074,7 +1099,7 @@ namespace FashionLine
 #if HONEY_API
 				  pWidth > 0 ? scrollRect.rectTransform.rect.width * pWidth : -1;
 #else
-			//	horizontal && horiScale > 0 ? viewLE.minWidth * horiScale : -1;
+			//	 pWidth > 0 ? scrollRect.rectTransform.rect.width * pWidth : -1;
 			0;
 #endif
 			//thisLE.preferredHeight = ctrlObj.GetComponent<RectTransform>().rect.height;
@@ -1091,6 +1116,7 @@ namespace FashionLine
 			LayoutRebuilder.MarkLayoutForRebuild(scrollRect.GetComponent<RectTransform>());
 			yield break;
 		}
+
 
 		static Coroutine resizeco;
 		public static void ResizeCustomUIViewport<T>(this T template, float viewpercent = -1) where T : BaseGuiEntry
@@ -1217,6 +1243,63 @@ namespace FashionLine
 			})
 				   where (UnityEngine.Object)x != (UnityEngine.Object)null
 				   select x;
+		}
+	}
+
+	public class DependencyInfo<T> where T : BaseUnityPlugin
+	{
+		public DependencyInfo(Version minTargetVer = null, Version maxTargetVer = null)
+		{
+			plugin = (T)GameObject.FindObjectOfType(typeof(T));
+			Exists = plugin != null;
+			MinTargetVersion = minTargetVer ?? new Version();
+			MaxTargetVersion = maxTargetVer ?? new Version();
+			InTargetVersionRange = Exists &&
+				((CurrentVersion = plugin?.Info.Metadata.Version
+				?? new Version()) >= MinTargetVersion);
+
+			if(maxTargetVer != null && maxTargetVer >= MinTargetVersion)
+				InTargetVersionRange &= Exists && (CurrentVersion <= MaxTargetVersion);
+		}
+
+		/// <summary>
+		/// plugin reference
+		/// </summary>
+		public readonly T plugin = null;
+		/// <summary>
+		/// does the mod exist
+		/// </summary>
+		public bool Exists { get; } = false;
+		/// <summary>
+		/// Current version matches or exceeds the min target mod version. 
+		/// if a max is set it will also make sure the mod is within range.
+		/// </summary>
+		public bool InTargetVersionRange { get; } = false;
+		/// <summary>
+		/// min version this mod expects
+		/// </summary>
+		public Version MinTargetVersion { get; } = null;
+		/// <summary>
+		/// max version this mod expects
+		/// </summary>
+		public Version MaxTargetVersion { get; } = null;
+		/// <summary>
+		/// version that is actually downloaded in the game
+		/// </summary>
+		public Version CurrentVersion { get; } = null;
+
+		public void PrintExistsMsg()
+		{
+
+		}
+
+		public override string ToString()
+		{
+			return
+				$"Plugin Name: {plugin?.Info.Metadata.Name ?? "Null"}\n" +
+				$"Current version: {CurrentVersion?.ToString() ?? "Null"}\n" +
+				$"Min Target Version: {MinTargetVersion}\n" +
+				$"Max Target Version: {MaxTargetVersion}\n";
 		}
 	}
 
