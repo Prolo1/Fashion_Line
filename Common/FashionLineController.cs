@@ -7,6 +7,9 @@ using System.Reflection;
 
 using UnityEngine;
 
+using ProloAPI;
+using ProloAPI.Extentions;
+
 using KKAPI;
 using KKAPI.Chara;
 using KKAPI.Maker;
@@ -24,9 +27,9 @@ using ChaCustom;
 #endif
 
 using static BepInEx.Logging.LogLevel;
-using static FashionLine.Fash_Util;
 using static FashionLine.FashionLine_Core;
-
+using static FashionLine.FashionLine_Controller
+	;
 //#if HONEY_API
 //using MyBrowserFolders = BrowserFolders.AI_BrowserFolders;
 //
@@ -36,8 +39,9 @@ using static FashionLine.FashionLine_Core;
 
 namespace FashionLine
 {
-	public class FashionLineController : CharaCustomFunctionController
+	public class FashionLine_Controller : CharaCustomFunctionController
 	{
+
 		internal Dictionary<string, CoordData> fashionData = new Dictionary<string, CoordData>();
 		private ChaFileCoordinate defaultCoord = null;
 		private PluginData pluginData = null;
@@ -81,7 +85,7 @@ namespace FashionLine
 
 				//save mat. editor data
 				var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-				if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
+				if(FashionLine_Core.MatEditerDependency.IsInTargetVersionRange && ctrlMEC)
 					try
 					{
 						ctrlMEC.GetType().GetMethod("OnCoordinateBeingSaved",
@@ -97,7 +101,7 @@ namespace FashionLine
 
 				//save overlay data
 				var ctrlKCO = GetComponent<KoiClothesOverlayController>();
-				if(FashionLine_Core.KoiOverlayDependency.InTargetVersionRange && ctrlKCO)
+				if(FashionLine_Core.KoiOverlayDependency.IsInTargetVersionRange && ctrlKCO)
 					try
 					{
 
@@ -116,7 +120,7 @@ namespace FashionLine
 			}
 
 			//load new data
-			pluginData = this.LoadExtData();
+			pluginData = this.LoadExtData<CurrentSaveLoadManager, FashionLine_Controller>();
 
 			if(co != null)
 				StopCoroutine(co);
@@ -271,7 +275,7 @@ namespace FashionLine
 
 
 			var ctrlKCO = GetComponent<KoiClothesOverlayController>();
-			if(FashionLine_Core.KoiOverlayDependency.InTargetVersionRange && ctrlKCO)
+			if(FashionLine_Core.KoiOverlayDependency.IsInTargetVersionRange && ctrlKCO)
 				try
 				{
 					ctrlKCO.GetType().GetMethod("OnCoordinateBeingLoaded",
@@ -287,7 +291,7 @@ namespace FashionLine
 				}
 
 			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-			if(FashionLine_Core.MatEditerDependency.InTargetVersionRange && ctrlMEC)
+			if(FashionLine_Core.MatEditerDependency.IsInTargetVersionRange && ctrlMEC)
 				try
 				{
 					ctrlMEC.GetType().GetMethod("OnCoordinateBeingLoaded",
@@ -409,7 +413,7 @@ namespace FashionLine
 
 		protected override void OnCardBeingSaved(GameMode currentGameMode)
 		{
-			this.SaveExtData();
+			this.SaveExtData<CurrentSaveLoadManager, FashionLine_Controller>();
 		}
 
 		#endregion

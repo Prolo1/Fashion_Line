@@ -121,7 +121,7 @@ namespace FashionLine
 
 							if(coordData != null)
 								yield return Instance.StartCoroutine(MakerAPI.GetCharacterControl()
-									.GetComponent<FashionLineController>()
+									.GetComponent<FashionLine_Controller>()
 									.AddFashionCo(0, LastCoord.coordinateName, coordData));
 
 							//Logger.LogInfo("ran new listener");
@@ -225,7 +225,7 @@ namespace FashionLine
 
 							if(coordData != null)
 								yield return Instance.StartCoroutine(MakerAPI.GetCharacterControl()
-									.GetComponent<FashionLineController>()
+									.GetComponent<FashionLine_Controller>()
 									.AddFashionCo(0, LastCoord.coordinateName, coordData));
 
 							//	Logger.LogInfo("ran new listener");
