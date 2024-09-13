@@ -8,6 +8,9 @@ using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.UI;
 
+using ProloAPI;
+using ProloAPI.Extentions;
+
 using KKAPI.Chara;
 using KKAPI.Maker;
 using KKAPI.Utilities;
@@ -35,71 +38,25 @@ using static BepInEx.Logging.LogLevel;
 
 namespace FashionLine
 {
-	public abstract class SaveLoadController<B, T>
-	{
-		public abstract int Version { get; }
-		public abstract string[] DataKeys { get; }
-		public enum LoadDataType : int { }
-
-		public SaveLoadController()
-		{
-			CompositeResolver.Register(
-				UnityResolver.Instance,
-				StandardResolver.Instance,
-				BuiltinResolver.Instance,
-				//default resolver
-				ContractlessStandardResolver.Instance
-				);
-		}
-
-		// Convert an object to a byte array
-		public static byte[] ObjectToByteArray(object obj)
-		{
-			BinaryFormatter bf = new BinaryFormatter();
-			using(var ms = new MemoryStream())
-			{
-				bf.Serialize(ms, obj);
-				return ms.ToArray();
-			}
-		}
-
-		public static T1 ByteArrayToObject<T1>(byte[] arr)
-		{
-			BinaryFormatter bf = new BinaryFormatter();
-			using(var ms = new MemoryStream())
-			{
-				ms.Write(arr, 0, arr.Length);
-				T1 obj = (T1)bf.Deserialize(ms);
-				return obj;
-			}
-		}
-
-		public abstract T Save(B ctrler, T data);
-		public abstract T Load(B ctrler, T data);
-		protected abstract T UpdateVersionFromPrev(B ctrler, T data);
-	}
 
 	/// <summary>
 	/// saves controls from current data. make a new one if variables change
 	/// </summary>
-	public class CurrentSaveLoadController : SaveLoadControllerV1
+	public class CurrentSaveLoadManager : SaveLoadManagerV1
 	{
 
 		public new int Version => base.Version + 1;
-		public new string[] DataKeys => new[]
-		{ "FashionData_Data" };
+		public new string[] DataKeys => new[] { "FashionData_Data" };
 
 		public new enum LoadDataType : int
-		{
-			Data,
-		}
+		{ Data, }
 
 		/// <summary>
 		/// creates an updated version 
 		/// </summary>
 		/// <param name="data"></param>
 		/// <returns></returns>
-		protected new PluginData UpdateVersionFromPrev(FashionLineController ctrl, PluginData data)
+		protected new PluginData UpdateVersionFromPrev(FashionLine_Controller ctrl, PluginData data)
 		{
 
 			if(data == null || data?.version != Version)
@@ -107,7 +64,7 @@ namespace FashionLine
 				data = base.UpdateVersionFromPrev(ctrl, data)?.Copy();
 				if(data != null && data.version == base.Version)
 				{
-					var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadControllerV1.LoadDataType.Data]], CompositeResolver.Instance);
+					var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadManagerV1.LoadDataType.Data]], CompositeResolver.Instance);
 
 
 					data.data[DataKeys[(int)LoadDataType.Data]] =
@@ -133,7 +90,7 @@ namespace FashionLine
 			return data;
 		}
 
-		public override PluginData Load(FashionLineController ctrl, PluginData data)
+		public override PluginData Load(FashionLine_Controller ctrl, PluginData data)
 		{
 
 			data = UpdateVersionFromPrev(ctrl, data);// use if version goes up (i.e. 1->2)
@@ -162,7 +119,7 @@ namespace FashionLine
 			return data;
 		}
 
-		public override PluginData Save(FashionLineController ctrl, PluginData data = null)
+		public override PluginData Save(FashionLine_Controller ctrl, PluginData data = null)
 		{
 			if(data == null)
 				data = new PluginData();
@@ -196,23 +153,21 @@ namespace FashionLine
 
 	}
 
-	public class SaveLoadControllerV1 : SaveLoadController<FashionLineController, PluginData>
+	public class SaveLoadManagerV1 : SaveLoadManager<FashionLine_Controller, PluginData>
 	{
-		public override int Version => 1;
-		public override string[] DataKeys => new[]
+		public new int Version => 1;
+		public new string[] DataKeys => new[]
 		{ "FashionData_Data" };
 
 		public new enum LoadDataType : int
-		{
-			Data,
-		}
+		{ Data, }
 
 		/// <summary>
 		/// creates an updated version 
 		/// </summary>
 		/// <param name="data"></param>
 		/// <returns></returns>
-		protected override PluginData UpdateVersionFromPrev(FashionLineController ctrler, PluginData data)
+		protected override PluginData UpdateVersionFromPrev(FashionLine_Controller ctrler, PluginData data)
 		{
 			if(data == null)
 				data = ctrler?.GetExtendedData(true);
@@ -220,15 +175,6 @@ namespace FashionLine
 			return data;
 		}
 
-		public override PluginData Save(FashionLineController ctrler, PluginData data)
-		{
-			throw new NotImplementedException();
-		}
-
-		public override PluginData Load(FashionLineController ctrler, PluginData data)
-		{
-			throw new NotImplementedException();
-		}
 
 
 		#region Old Classes

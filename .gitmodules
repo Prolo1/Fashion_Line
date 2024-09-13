@@ -1,0 +1,3 @@
+[submodule "ProloAPI"]
+	path = ProloAPI
+	url = https://github.com/Prolo1/ProloAPI.git

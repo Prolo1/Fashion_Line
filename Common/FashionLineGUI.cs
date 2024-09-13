@@ -10,6 +10,9 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using TMPro;
 
+using ProloAPI;
+using ProloAPI.Extentions;
+
 using BepInEx;
 using KKAPI;
 using KKAPI.Studio;
@@ -33,13 +36,14 @@ using ChaCustom;
 using static KKAPI.Maker.MakerAPI;
 using static KKAPI.Studio.StudioAPI;
 using static FashionLine.FashionLine_Core;
-using static FashionLine.Fash_Util;
+using static ProloAPI.Utilities.Util_General;
+using static ProloAPI.Utilities.Util_GUI;
 //using static FashionLine.Fash_Util;
 //using static Illusion.Game.Utils;
 
 namespace FashionLine
 {
-	public class FashionLine_GUI : MonoBehaviour
+	public class FashionLine_GUI : ProloGUIBehaviour<FashionLine_GUI>
 	{
 		#region Classes
 
@@ -177,7 +181,7 @@ namespace FashionLine
 						GUI.contentColor = Color.white;
 
 						if(sortDropdown == null)
-							sortDropdown = Fash_Util.GUILayoutDropdownDrawer
+							sortDropdown = GUILayoutDropdownDrawer
 							((x, index) => new GUIContent() { text = x[index] }
 							, sortOptions, -1,
 							onSelect: (selected) =>
@@ -331,7 +335,7 @@ namespace FashionLine
 						GUILayout.ExpandHeight(true)
 						);
 
-					var lists = StudioAPI.GetSelectedControllers<FashionLineController>();
+					var lists = StudioAPI.GetSelectedControllers<FashionLine_Controller>();
 					var tmp =
 					lists.SelectMany(s => s.fashionData.Values).Distinct()
 					 .ToDictionary(k => k, v => costumes.TryGetValue(v, out var val1) ? val1 : null);
@@ -377,7 +381,7 @@ namespace FashionLine
 							tmporder = tmporder.OrderByDescending(sort).ToList();
 
 						GUIContent[] content = tmporder.Attempt(
-						   v => new GUIContent() { image = v.Value, tooltip = v.Key.name }).ToArray();
+						   v => new GUIContent() { image = v.Value, tooltip = v.Key.translatedName }).ToArray();
 
 						var myStyle = new GUIStyle() { alignment = TextAnchor.LowerCenter };
 						myStyle.normal.textColor = Color.white.RGBMultiplied(.9f);
@@ -649,7 +653,7 @@ namespace FashionLine
 			Cleanup();
 
 			var inst = FashionLine_Core.Instance;
-			var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLineController>();
+			var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLine_Controller>();
 
 			#region Init
 #if KOI_API
@@ -741,8 +745,9 @@ namespace FashionLine
 			#endregion
 
 			#region Top
-			costTxt = e.AddControl(new MyMakerText("Costume Name", category, inst))
-				.AddToCustomGUILayout(topUI: true, newVertLine: false, pWidth: 0.70f);
+			//costume Name
+			costTxt = e.AddControl(new MyMakerText("", category, inst))
+				.AddToCustomGUILayout(topUI: true, newVertLine: true, pWidth: 0.70f, viewpercent: cfg.viewportUISpace.Value);
 
 			e.AddControl(new MakerDropdown(settingName: "", options: sortOptions, initialValue: 0, category: category, owner: inst))
 				.AddToCustomGUILayout(topUI: true, newVertLine: false, pWidth: 0.25f)
@@ -786,13 +791,28 @@ namespace FashionLine
 					});
 				});
 
-			e.AddControl(new MakerTextbox(settingName: "", defaultValue: "", category: category, owner: inst))
+			e.AddControl(new MakerTextbox(
+#if KOI_API
+				settingName: "Search",
+#elif HONEY_API
+				settingName: "",
+#endif
+				defaultValue: "", category: category, owner: inst))
 				.AddToCustomGUILayout(topUI: true, newVertLine: true)
 				.OnGUIExists((gui) =>
 				{
-					var input = gui.ControlObject?.GetComponentInChildren<InputField>();
-					input.textComponent.alignment = TextAnchor.MiddleLeft;
+#if KKS
+					var input = (TMP_InputField)gui.ControlObject?.GetInputFieldComponentInChildren();
+#else
+					var input = (InputField)gui.ControlObject?.GetInputFieldComponentInChildren();
+#endif
 
+					input.textComponent.alignment =
+#if KKS
+					TextAlignmentOptions.MidlineLeft;
+#else
+					TextAnchor.MiddleLeft;
+#endif
 					input.ObserveEveryValueChanged((k) => k.text)
 					.Subscribe((val) =>
 					{
@@ -823,9 +843,18 @@ namespace FashionLine
 					//	((Behaviour)gui.ControlObject.GetTextComponentInChildren()).enabled = false;
 
 					//input.MarkGeometryAsDirty();
+#if KKS
+					var placehold = ((TMP_Text)input.placeholder);
+#else
 					var placehold = ((Text)input.placeholder);
+#endif
 					placehold.text = "Search...";
-					placehold.alignment = TextAnchor.MiddleLeft;
+					placehold.alignment =
+#if KKS
+					TextAlignmentOptions.MidlineLeft;
+#else
+					TextAnchor.MiddleLeft;
+#endif
 
 				});
 
@@ -841,18 +870,21 @@ namespace FashionLine
 					{
 						var obj = (MakerToggle)gui;
 						cfg.areCoordinatesPersistant.SettingChanged += isPersistantHndl =
-					(s, a) =>
-					{
-						if(obj.Value != cfg.areCoordinatesPersistant.Value)
-							obj.Value = cfg.areCoordinatesPersistant.Value;
-					};
+						(s, a) =>
+						{
+							if(obj.Value != cfg.areCoordinatesPersistant.Value)
+								obj.Value = cfg.areCoordinatesPersistant.Value;
+						};
 						isPersistantHndl(null, null);
 
 						gui.ValueChanged.Subscribe((on) =>
-					{
-						cfg.areCoordinatesPersistant.Value = on;
-					});
-					});
+						{
+							cfg.areCoordinatesPersistant.Value = on;
+						});
+					})
+					.tooltipMsg(cfg.areCoordinatesPersistant.Description.Description,
+					Instance)
+					;
 
 			e.AddControl(new MyMakerButton("Wear Selected", category, inst))
 				.AddToCustomGUILayout(newVertLine: true)
@@ -985,7 +1017,8 @@ namespace FashionLine
 			tgl.onValueChanged.AddListener((val) =>
 			{
 #if KKS
-				colours.selectedColor = Color.white;
+				//	colours.selectedColor = Color.white;
+				img.color = Color.white;
 #else
 				img.color = Color.white;
 #endif
@@ -994,14 +1027,15 @@ namespace FashionLine
 				if(!val) return;
 
 #if KKS
-				colours.selectedColor = Color.green - new Color(0, 0, 0, .15f);
+				//		colours.selectedColor = Color.green - new Color(0, 0, 0, .15f);
+				img.color = Color.green - new Color(0, 0, 0, .15f);
 #else
 				img.color = Color.green - new Color(0, 0, 0, .15f);
 #endif
 
 				currentCoord = coordinate;
 
-#if !KKS
+#if true //!KKS
 				tgl.InstantClearState();
 #endif
 			});
@@ -1018,7 +1052,7 @@ namespace FashionLine
 				}
 				else
 				{
-					costTxt.Text = Fash_Util.GetAllChaFuncCtrlOfType<FashionLineController>()
+					costTxt.Text = GetAllChaFuncCtrlOfType<FashionLine_Controller>()
 					.FirstOrNull()?.fashionData.Values
 					.FirstOrNull(j => (Toggle)j.extras.FirstOrNull(k => k is Toggle) == tgl.group.ActiveToggles().FirstOrNull())
 					?.name ?? (tgl.group.AnyTogglesOn() ? costTxt.Text : "");//May find something better in the future (I hope so 😰)
@@ -1078,7 +1112,7 @@ namespace FashionLine
 
 		#endregion
 
-		private static string MakeDirPath(string path) => Fash_Util.MakeDirPath(path);
+		//private static string MakeDirPath(string path) => MakeDirPath(path);
 
 		public static void GetNewImageTarget()
 		{
@@ -1091,7 +1125,7 @@ namespace FashionLine
 			FileFilter,
 			FileExt,
 			OpenFileDialog.MultiFileFlags,
-			owner: ForeGrounder.GetForgroundHandeler());
+			owner: ForeGrounder.Handle);
 
 			var path = paths?.Attempt((s) => s.IsNullOrWhiteSpace() ?
 			throw new Exception() : s).LastOrNull().MakeDirPath();
@@ -1137,8 +1171,8 @@ namespace FashionLine
 				//use file
 
 				var fashCtrls = InsideStudio ?
-					StudioAPI.GetSelectedControllers<FashionLineController>() :
-					MakerAPI.GetCharacterControl().GetComponents<FashionLineController>();
+					StudioAPI.GetSelectedControllers<FashionLine_Controller>() :
+					MakerAPI.GetCharacterControl().GetComponents<FashionLine_Controller>();
 
 
 				var coord = new ChaFileCoordinate();
@@ -1173,7 +1207,7 @@ namespace FashionLine
 			FileFilter,
 			FileExt,
 			OpenFileDialog.SingleFileFlags,
-			owner: ForeGrounder.GetForgroundHandeler());
+			owner: ForeGrounder.Handle);
 
 			var path = paths?.Attempt((s) => s.IsNullOrWhiteSpace() ?
 			throw new Exception() : s).LastOrNull().MakeDirPath();
