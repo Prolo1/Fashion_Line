@@ -74,30 +74,36 @@ namespace FashionLine
 	{
 
 		#region Variables
+
+		#region Constant
 		public const string ModName = "Fashion Line";
 		public const string GUID = "prolo.fashionline";//never change this
 		public const string Description =
 			@"Adds the ability to save coordinate cards to a " +
 			@"character card and use them (Why was this not part of HS2/AI?¯\_(ツ)_/¯)";
-		public const string Version = "0.3.3.1";
+		public const string Version = "0.3.3.2";
+		#endregion
 
-		//public static FashionLine_Core Instance;
-		//internal static new ManualLogSource Logger;
-
+		#region Dependencies
 		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
 		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
 		//internal static DependencyInfo<All_BrowserFolders> BrowserfolderDependency;
+		#endregion
 
+		#region Resources
 		internal static Texture2D icon = null;
 		internal static Texture2D UIGoku = null;
 		internal static Texture2D iconBG = null;
+		#endregion
 
+		#region Configuration
 		public static FashionLineConfig cfg;
 		public struct FashionLineConfig : IConfiguration
 		{
 			//Main
 			public ConfigEntry<bool> enable { get; set; }
 			public ConfigEntry<bool> areCoordinatesPersistant { get; set; }
+			public ConfigEntry<bool> addToCurrentAccessories { get; set; }
 			public ConfigEntry<KeyboardShortcut> prevInLine { get; set; }
 			public ConfigEntry<KeyboardShortcut> nextInLine { get; set; }
 
@@ -110,6 +116,9 @@ namespace FashionLine
 			public ConfigEntry<bool> resetOnLaunch { get; set; }
 			public ConfigEntry<bool> debug { get; set; }
 			public ConfigEntry<float> viewportUISpace { get; set; }
+			public ConfigEntry<float> makerUIWidth { get; set; }
+			public ConfigEntry<Rect> makerWinRec { get; set; }
+			public ConfigEntry<Rect> makerSortOffset { get; set; }
 			public ConfigEntry<float> studioUIWidth { get; set; }
 			public ConfigEntry<Rect> studioWinRec { get; set; }
 			public ConfigEntry<Rect> studioSortOffset { get; set; }
@@ -120,8 +129,12 @@ namespace FashionLine
 		}
 		#endregion
 
-		void initConfiguration()
+		#endregion
+
+		void initConfig()
 		{
+
+			#region Values
 			int secIndex = 0;
 			int secIndex2 = 99;
 			int index = 0;
@@ -138,6 +151,7 @@ namespace FashionLine
 			string adv = "Advanced";
 			string advx =
 			$"{secIndex2--:d2}. " + adv;
+			#endregion
 
 			cfg = new FashionLineConfig()
 			{
@@ -147,6 +161,10 @@ namespace FashionLine
 
 				areCoordinatesPersistant = Config.Bind(main, "Is FashionLine Persistent", false,
 				new ConfigDescription("changes if the current FashionLine will persist when changing characters in maker", null,
+				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
+
+				addToCurrentAccessories = Config.Bind(main, "Add To Current Accessories", false,
+				new ConfigDescription("Add accessories from the costume to the character being loaded w/o removing current accessories", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				prevInLine = Config.Bind(main, "Prev. In Line", KeyboardShortcut.Empty,
@@ -297,6 +315,89 @@ namespace FashionLine
 						Category = advx
 					}));
 
+				cfg.makerUIWidth = Config.Bind(adv, "Maker UI Width", .5f,
+								new ConfigDescription("Increase / decrease the Fashion Line content width ",
+								new AcceptableValueRange<float>(0, 1),
+								new ConfigurationManagerAttributes()
+								{
+									Order = index--,
+									ShowRangeAsPercent = false,
+									IsAdvanced = true,
+									Category = advx
+								})).ConfigDefaulter(cfg);
+				cfg.makerWinRec = Config.Bind(adv, "Maker Win Rect", FashionLine_GUI.winRec,
+					new ConfigDescription("reset the window location / Size if needed", null,
+					new ConfigurationManagerAttributes()
+					{
+						Order = index--,
+						ShowRangeAsPercent = false,
+						IsAdvanced = true,
+						CustomDrawer = (draw) =>
+						{
+							Rect tmp = new Rect(cfg.makerWinRec.Value);
+							GUILayout.BeginHorizontal();
+
+							GUILayout.Label("X", GUILayout.ExpandWidth(false));
+							//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
+
+							GUILayout.Label("Y", GUILayout.ExpandWidth(false));
+							//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
+
+							GUILayout.Label("Width", GUILayout.ExpandWidth(false));
+							//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
+
+							GUILayout.Label("Height", GUILayout.ExpandWidth(false));
+							//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
+
+
+							GUILayout.EndHorizontal();
+
+							if(cfg.makerWinRec.Value != tmp)
+								cfg.makerWinRec.Value = tmp;
+						},
+						Category = advx
+					}));
+				cfg.makerSortOffset = Config.Bind(adv, "Maker Sort Offset", FashionLine_GUI.offsetRect,
+					new ConfigDescription("reset the window location / size if needed", null,
+					new ConfigurationManagerAttributes()
+					{
+						Order = index--,
+						ShowRangeAsPercent = false,
+						IsAdvanced = true,
+						CustomDrawer = (draw) =>
+						{
+							Rect tmp = new Rect(cfg.makerSortOffset.Value);
+							GUILayout.BeginHorizontal();
+
+							GUILayout.Label("X", GUILayout.ExpandWidth(false));
+							//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
+
+							GUILayout.Label("Y", GUILayout.ExpandWidth(false));
+							//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
+
+							GUILayout.Label("Width", GUILayout.ExpandWidth(false));
+							//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
+
+							GUILayout.Label("Height", GUILayout.ExpandWidth(false));
+							//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
+							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
+
+
+							GUILayout.EndHorizontal();
+
+							if(cfg.makerSortOffset.Value != tmp)
+								cfg.makerSortOffset.Value = tmp;
+						},
+						Category = advx
+					}));
+
 			}
 
 			//enable ProloAPI Debug
@@ -358,6 +459,18 @@ namespace FashionLine
 				if(!cfg.studioSortOffset.Value.Equals(FashionLine_GUI.offsetRect))
 					FashionLine_GUI.offsetRect = new Rect(cfg.studioSortOffset.Value);
 			};
+
+			cfg.makerWinRec.SettingChanged += (m, n) =>
+			{
+				if(!cfg.makerWinRec.Value.Equals(FashionLine_GUI.winRec))
+					FashionLine_GUI.winRec = new Rect(cfg.makerWinRec.Value);
+			};
+
+			cfg.makerSortOffset.SettingChanged += (m, n) =>
+			{
+				if(!cfg.makerSortOffset.Value.Equals(FashionLine_GUI.offsetRect))
+					FashionLine_GUI.offsetRect = new Rect(cfg.makerSortOffset.Value);
+			};
 		}
 
 		void Awake()
@@ -390,6 +503,8 @@ namespace FashionLine
 				//			$"{BrowserfolderDependency}");
 
 			}
+
+			//Logger.LogInfo("start resources");
 
 			//Embeded Resources
 			using(MemoryStream memStream = new MemoryStream())
@@ -426,6 +541,7 @@ namespace FashionLine
 
 
 			}
+			//Logger.LogInfo("start type converters");
 
 			//Type Convertors
 			{
@@ -453,10 +569,14 @@ namespace FashionLine
 				   });
 			}
 
-			initConfiguration();
+			//Logger.LogInfo("start initconfig");
+			initConfig();
 
+			//Logger.LogInfo("start init hooks");
 			Hooks.Init();
+			//Logger.LogInfo("start regester behavior");
 			CharacterApi.RegisterExtraBehaviour<FashionLine_Controller>(GUID);
+			//Logger.LogInfo("start gui regester");
 			FashionLine_GUI.Init();
 
 			//Instantiate(new GameObject(), null).AddComponent<Canvas>();

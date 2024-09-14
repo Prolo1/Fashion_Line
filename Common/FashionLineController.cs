@@ -216,7 +216,7 @@ namespace FashionLine
 			index %= line.Count;
 
 			if(line.InRange(index))
-				WearFashion(line[index].Value);
+				WearFashion(line[index].Value, cfg.addToCurrentAccessories.Value);
 		}
 
 		public void PrevInLine()
@@ -230,10 +230,10 @@ namespace FashionLine
 			index = index < 0 ? line.Count - 1 : index;
 
 			if(line.InRange(index))
-				WearFashion(line[index].Value);
+				WearFashion(line[index].Value, cfg.addToCurrentAccessories.Value);
 		}
 
-		public void WearFashion(in CoordData costume, bool isFile = true, bool reload = true)
+		public void WearFashion(in CoordData costume, bool addAccessories, bool isFile = true, bool reload = true)
 		{
 			if(costume == null) return;
 
@@ -246,27 +246,55 @@ namespace FashionLine
 
 			try
 			{
+				ChaFileCoordinate coordinate = new ChaFileCoordinate();
 				if(isFile)
 				{
-
 					using(MemoryStream stream = new MemoryStream(costume.data))
 					{
-						if(!ChaControl.nowCoordinate.LoadFile(stream
+						if(!coordinate.LoadFile(stream
 #if HONEY_API
 						, (int)Singleton<GameSystem>.Instance.language
 #endif
 						))
 							FashionLine_Core.Logger.Log(Warning | Message, $"Could not read card [{costume.name}]. Data size [{costume.data.Length}]");
 
+						//remove excess
+						var tmp1 = ChaControl.nowCoordinate.accessory.parts.ToList();
+						tmp1.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
+						var tmp2 = coordinate.accessory.parts.ToList();
+						tmp2.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
+
+						//conbine accessories
+						if(addAccessories)
+							coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
+
+
+						ChaControl.nowCoordinate.MemberInit();//reset coordinate
+						if(!ChaControl.nowCoordinate.LoadBytes(coordinate?.SaveBytes(), coordinate?.loadVersion))
+							throw new ArgumentException("Could not load specified coordinate");
 						//return;
 					}
 				}
 				else
 				{
 					coord = (ChaFileCoordinate)costume.extras.Find((p) => p is ChaFileCoordinate);
-					if(!ChaControl.nowCoordinate.LoadBytes(coord?.SaveBytes(), coord?.loadVersion))
+
+					if(!coordinate.LoadBytes(coord?.SaveBytes(), coord?.loadVersion))
 						FashionLine_Core.Logger.LogMessage($"Could not read Coordinate [{coord?.coordinateName ?? "Null"}]");
+
+					var tmp1 = ChaControl.nowCoordinate.accessory.parts.ToList();
+					tmp1.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
+					var tmp2 = coordinate.accessory.parts.ToList();
+					tmp2.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
+					if(addAccessories)
+						coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
+
+					ChaControl.nowCoordinate.MemberInit();//reset coordinate
+					if(!ChaControl.nowCoordinate.LoadBytes(coordinate.SaveBytes(), coordinate?.loadVersion))
+						throw new ArgumentException("Could not load specified coordinate");
+
 				}
+
 			}
 			catch(Exception e)
 			{
@@ -318,7 +346,7 @@ namespace FashionLine
 			var costume = new CoordData() { name = "(default)" };
 			costume.extras.Add(defaultCoord);
 
-			WearFashion(costume, isFile: false, reload: true);
+			WearFashion(costume, cfg.addToCurrentAccessories.Value, isFile: false, reload: true);
 		}
 
 		private void FashionReload(bool reload = true)
@@ -335,6 +363,7 @@ namespace FashionLine
 #if HONEY_API
 					Singleton<Character>.Instance.customLoadGCClear = false;
 #endif
+
 					ChaControl.Reload(false, true, true, true
 #if HONEY_API
 						, true
@@ -379,12 +408,12 @@ namespace FashionLine
 			yield break;
 		}
 
-		public IEnumerator WearFashionCo(uint delay, CoordData costume, bool isFile = true, bool reload = true)
+		public IEnumerator WearFashionCo(uint delay, CoordData costume, bool addAccessories, bool isFile = true, bool reload = true)
 		{
 			for(int a = 0; a < ((int)delay); ++a)
 				yield return null;
 
-			WearFashion(costume, isFile, reload);
+			WearFashion(costume, addAccessories, isFile: isFile, reload: reload);
 
 			yield break;
 		}

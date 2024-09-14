@@ -38,11 +38,18 @@ using static KKAPI.Studio.StudioAPI;
 using static FashionLine.FashionLine_Core;
 using static ProloAPI.Utilities.Util_General;
 using static ProloAPI.Utilities.Util_GUI;
+using KKAPI.MainGame;
+using KKAPI.Chara;
 //using static FashionLine.Fash_Util;
 //using static Illusion.Game.Utils;
 
 namespace FashionLine
 {
+	using Illusion.Extensions;
+
+	using KKAPI.Maker.UI.Sidebar;
+
+	using Manager;
 	public class FashionLine_GUI : ProloGUIBehaviour<FashionLine_GUI>
 	{
 		#region Classes
@@ -99,10 +106,11 @@ namespace FashionLine
 		static GridLayoutGroup gridLayout = null;
 		static ToggleGroup tglGroup = null;
 		static EventHandler isPersistantHndl = null;
+		static EventHandler addAccessoriesHndl = null;
 		internal static MakerImage template = null;
 		public static Button coordToFashionBtn = null;
 		public static Button toFashionOnlyBtn = null;
-
+		static bool enableImmediateUI = false;
 #if HONEY_API
 		public static CvsO_Type charaCustom { get; private set; } = null;
 		public static CvsB_ShapeBreast boobCustom { get; private set; } = null;
@@ -119,14 +127,17 @@ namespace FashionLine
 #endif
 		#endregion
 
+		#region Immediate GUI
+		#endregion
+
 		#region Studio
 		static CurrentStateCategory categoryStudio;
 		internal static Texture2D userTexUI = Texture2D.blackTexture;
-		internal static UnityEvent customStudioUI = new UnityEvent();
+		internal static UnityEvent customUI = new UnityEvent();
 		internal static Rect winRec = new Rect(105, 390, 440, 600);
 		internal static Rect offsetRect = new Rect(new Vector2(winRec.width, 0), new Vector2(200, 200));
-		static ToolbarToggle tgl;
 		static Rect sortRect = new Rect();
+		static ToolbarToggle tgl;
 		static bool enableStudioUI = false;
 		static bool enableStudioUISort = false;
 		static Func<int> sortDropdown = null;
@@ -135,8 +146,9 @@ namespace FashionLine
 
 		#endregion
 
-		void OnGUI()
+		static void StudioGUI()
 		{
+			//Studio
 			if(!StudioLoaded || !enableStudioUI) return;
 
 
@@ -152,13 +164,13 @@ namespace FashionLine
 					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex) :
 					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex);
 
-			GUI.DrawTexture(winRec = GUI.Window((FashionLine_Core.GUID + "1").GetHashCode(),
+			GUI.DrawTexture(winRec = GUI.Window((GUID + "1").GetHashCode(),
 				winRec, id =>
 				{
 					//var studioCtrl = Studio.Studio.Instance;
 					//var camCtrl = studioCtrl.cameraCtrl;
 
-					customStudioUI.Invoke();
+					customUI.Invoke();
 
 					winRec = IMGUIUtils.DragResizeEatWindow(id, winRec);
 
@@ -171,7 +183,7 @@ namespace FashionLine
 
 			sortRect = new Rect(offsetRect.position + winRec.position, offsetRect.size);
 			if(enableStudioUISort)
-				GUI.DrawTexture(sortRect = GUI.Window((FashionLine_Core.GUID + "2").GetHashCode(), sortRect,
+				GUI.DrawTexture(sortRect = GUI.Window((GUID + "2").GetHashCode(), sortRect,
 					(id) =>
 					{
 						colour1 = GUI.color;
@@ -212,31 +224,120 @@ namespace FashionLine
 			GUI.backgroundColor = colour3;
 		}
 
-		void OnDestroy()
+		static void ImmediateGUI()
 		{
-			Cleanup();
+			if(!enableImmediateUI) return;
+
+			var camCtrl = Studio.Studio.Instance.cameraCtrl;
+
+			var colour1 = GUI.color;
+			var colour2 = GUI.contentColor;
+			var colour3 = GUI.backgroundColor;
+
+			GUI.color = Color.white;
+			GUI.contentColor = Color.white;
+
+			//null coalescing is necessary
+			var bgTex = cfg.enableBGUI.Value ? userTexUI ??
+					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex) :
+					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex);
+
+			
+			GUI.DrawTexture(winRec = GUI.Window((GUID + "1").GetHashCode(),
+				winRec, id =>
+				{
+					//var studioCtrl = Studio.Studio.Instance;
+					//var camCtrl = studioCtrl.cameraCtrl;
+
+					customUI.Invoke();
+
+					winRec = IMGUIUtils.DragResizeEatWindow(id, winRec);
+
+
+					if(!cfg.studioWinRec.Value.Equals(winRec))
+						cfg.studioWinRec.Value = new Rect(winRec);
+				}, ModName),
+				bgTex,
+				ScaleMode.StretchToFill);
+
+			sortRect = new Rect(offsetRect.position + winRec.position, offsetRect.size);
+			if(enableStudioUISort)
+				GUI.DrawTexture(sortRect = GUI.Window((GUID + "2").GetHashCode(), sortRect,
+					(id) =>
+					{
+						colour1 = GUI.color;
+						colour2 = GUI.contentColor;
+						colour3 = GUI.backgroundColor;
+
+						GUI.contentColor = Color.white;
+
+						if(sortDropdown == null)
+							sortDropdown = GUILayoutDropdownDrawer
+							((x, index) => new GUIContent() { text = x[index] }
+							, sortOptions, -1,
+							onSelect: (selected) =>
+							{
+								//enableStudioUISort = !enableStudioUISort; 
+								return selected;
+							});
+
+						sortVal = sortDropdown();
+
+						GUI.color = colour1;
+						GUI.contentColor = colour2;
+						GUI.backgroundColor = colour3;
+
+						GUI.DragWindow();
+						IMGUIUtils.EatInputInRect(sortRect);
+						offsetRect = new Rect(sortRect.position - winRec.position, sortRect.size);
+
+						if(offsetRect != cfg.studioSortOffset.Value)
+							cfg.studioSortOffset.Value = offsetRect;
+
+					}, "Sort Options"),
+					bgTex,
+					ScaleMode.StretchToFill);
+
+			 
+			GUI.color = colour1;
+			GUI.contentColor = colour2;
+			GUI.backgroundColor = colour3;
 		}
 
 		public static void Init()
 		{
 			Cleanup();
+
+			void OnLoad()
+			{
+				//if(Instance.gameObject)
+				//	DestroyImmediate(Instance.gameObject);
+
+				//Allow OnGUI() to run
+				var obj = CreateGameObject("FashionLine_GUI", typeof(FashionLine_GUI));
+				obj.transform.SetAsLastSibling();
+				GameObject.DontDestroyOnLoad(obj);
+			};
+			OnLoad();
+
+			//StudioLoadedChanged += OnLoad;
+			//MakerBaseLoaded += OnLoad;
+
 			if(InsideStudio)
 			{
 
+				Instance.guiEvent.AddListener(StudioGUI);
 				StudioLoadedChanged += (s, e) =>
 				{
-					//Allow OnGUI() to run
-					var obj = new GameObject();
-					obj.AddComponent<FashionLine_GUI>();
-					obj.transform.SetAsLastSibling();
-					obj.name = "FashionLine_GUI";
 
-					CustomToolbarButtons.AddLeftToolbarToggle
-						(new Texture2D(32, 32),
+
+					CustomToolbarButtons.AddLeftToolbarToggle(new Texture2D(32, 32),
 						onValueChanged: val =>
 						{
 							enableStudioUI = val;
-						}).OnGUIExists(gui =>
+						})
+					.OnGUIExists(
+						gui =>
 						{
 							//Toggle image bi-pass
 
@@ -267,7 +368,7 @@ namespace FashionLine
 				#endregion
 
 				//update loop
-				customStudioUI.AddListener(() =>
+				customUI.AddListener(() =>
 				{
 					GUILayout.BeginVertical();
 
@@ -429,6 +530,12 @@ namespace FashionLine
 					GUI.color = Color.white;
 					GUI.contentColor = Color.white;
 
+
+					var addAcc=GUILayout.Toggle(cfg.addToCurrentAccessories.Value, GUIContent.Temp("Combine Accessories", cfg.addToCurrentAccessories.Description.Description));
+
+					if(addAcc != cfg.addToCurrentAccessories.Value)
+						cfg.addToCurrentAccessories.Value = addAcc;
+					
 					tmpSty = new GUIStyle(GUI.skin.button);
 					tmpSty.normal.textColor = tmpSty.normal.textColor.AlphaMultiplied(lists.Any() ? 1 : 0.60f);
 					if(!lists.Any())
@@ -438,7 +545,7 @@ namespace FashionLine
 					if(GUILayout.Button("Wear Selected", tmpSty))
 						foreach(var fashion in lists)
 							if(selectKey != null)
-								fashion.WearFashion(selectKey);
+								fashion.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
 
 					if(GUILayout.Button("Wear Defult", tmpSty))
 						foreach(var fashion in lists)
@@ -450,7 +557,7 @@ namespace FashionLine
 					if(GUILayout.Button("Load Coordinate[s]", tmpSty) && lists.Any())
 					{
 						ForeGrounder.SetCurrentForground();
-						GetNewImageTarget();
+						GetNewCoordinateImages(null);
 					}
 					//if(GUILayout.Button("load current coordinate"));
 
@@ -490,6 +597,7 @@ namespace FashionLine
 			}
 			else
 			{
+				#region Maker
 				RegisterCustomSubCategories += (s, e) =>
 				{
 					//Create custom category 
@@ -502,8 +610,18 @@ namespace FashionLine
 
 					category = new MakerCategory(peram.CategoryName, subCategoryName, displayName: displayName);
 					// category2 = new MakerCategory(MakerConstants.Clothes.CategoryName, "Save / Delete");
-
 					e.AddSubCategory(category);
+
+					MakerAPI.AddSidebarControl(new SidebarToggle("Show Floating Fashionline", enableImmediateUI, FashionLine_Core.Instance))
+					.OnGUIExists(gui =>
+					{
+						gui.ValueChanged.Subscribe((val) =>
+						{
+							enableImmediateUI = val;
+						});
+
+
+					});
 				};
 				MakerBaseLoaded += (s, e) => { AddFashionLineMenu_Maker(e); };
 				MakerFinishedLoading += (s, e) =>
@@ -619,8 +737,332 @@ namespace FashionLine
 						btn?.onClick?.AddListener(() => GetMakerBase().drawMenu.ChangeMenuFunc());
 					}
 #endif
+
 				};
 				MakerExiting += (s, e) => { Cleanup(); };
+				#endregion
+
+
+
+					Instance.guiEvent.AddListener(ImmediateGUI);
+
+				#region Init Values
+				Dictionary<CoordData, Texture2D> costumes = new Dictionary<CoordData, Texture2D>();
+				Vector2 scrollPos = Vector2.zero;
+				CoordData selectKey = null;
+
+				string tooltip = "";
+				string search = "";
+				int selectNum = -1;
+
+				winRec = new Rect(cfg.makerWinRec.Value);
+				offsetRect = new Rect(cfg.makerSortOffset.Value);
+				var tmpSty = new GUIStyle(GUI.skin.label);
+				#endregion
+
+				var tabstyle = new GUIStyle(GUI.skin.button)
+				{
+
+					padding = new RectOffset(5, 5, 5, 0),
+					alignment = TextAnchor.UpperLeft
+
+				};
+				Vector2 toolPos = Vector2.zero;
+				int selectedChar = 0;
+				int skipFrames = 0;
+				FashionLine_Controller fashCtrl = null;
+
+				//Maker update loop
+				customUI.AddListener(() =>
+				{
+					//if((skipFrames = Math.Max(-1, --skipFrames)) > -1)
+					//	return;
+					GUILayout.BeginVertical();
+					try
+					{
+						#region Top
+
+						#region Coordinate Lable
+						//Currently selected Coordinate
+
+						var sel = selectKey != null ?
+						 selectKey.name : "";
+
+						tmpSty.fontStyle = selectKey == null ? FontStyle.Italic : FontStyle.Normal;
+						tmpSty.alignment = TextAnchor.LowerLeft;
+						tmpSty.wordWrap = true;
+						tmpSty.normal.textColor = tooltip.IsNullOrWhiteSpace() && selectKey != null ?
+						Color.green : Color.white;
+						sel = tooltip.IsNullOrWhiteSpace() ? sel : tooltip;
+
+						int fws = (int)(Mathf.Clamp(winRec.width, .001f, winRec.width) / 16);
+						tmpSty.fontSize = Math.Min(75, (int)(fws/* * (1.0f / sel.Length * 15)*/));
+
+						GUILayout.Label(sel, tmpSty, GUILayout.Height(tmpSty.lineHeight));
+						float txtH = GUILayoutUtility.GetLastRect().height;
+						#endregion
+
+						#region Search Bar
+						//Search Bar
+						GUILayout.BeginHorizontal();
+
+						tmpSty = new GUIStyle(GUI.skin.textField);
+						tmpSty.alignment = TextAnchor.LowerLeft;
+						tmpSty.fontSize = (int)(fws * 0.95f);
+						tmpSty.fontStyle = search.IsNullOrWhiteSpace() ? FontStyle.Italic : FontStyle.Normal;
+						//tmpSty.overflow= true;
+						tmpSty.wordWrap = true;
+
+						search = GUILayout.TextField(search, tmpSty,
+							GUILayout.Height(tmpSty.lineHeight));
+						if(search.IsNullOrEmpty())
+						{
+							tmpSty = new GUIStyle() { fontStyle = FontStyle.Italic, fontSize = fws };
+							tmpSty.normal.textColor = GUI.skin.textField.normal.textColor;
+							GUI.Label(GUILayoutUtility.GetLastRect(), "Search...", tmpSty);
+						}
+						txtH += GUILayoutUtility.GetLastRect().height;
+
+
+						//Sort Button
+						if(GUILayout.Button("Sort",
+							GUILayout.Width(winRec.width * .20f),
+							GUILayout.Height(tmpSty.lineHeight)))
+							enableStudioUISort = !enableStudioUISort;
+
+						GUILayout.EndHorizontal();
+						#endregion
+
+						#endregion
+
+						#region Mid
+
+						//Character choices
+						var lists = (IEnumerable<FashionLine_Controller>)null;
+#if KKS
+						lists = Character.GetCharaList(1).Concat(Character.GetCharaList(0)).Select(ctrl => ctrl.GetComponent<FashionLine_Controller>());
+#else
+					lists = Character.Instance.GetCharaList(1).Concat(Character.Instance.GetCharaList(0)).Select(ctrl => ctrl.GetComponent<FashionLine_Controller>());
+#endif
+						var tmp =
+				lists.SelectMany(s => s.fashionData.Values).Distinct()
+				 .ToDictionary(k => k, v => costumes.TryGetValue(v, out var val1) ? val1 : null);
+
+						if(!tmp.Keys.SequenceEqual(costumes.Keys))
+						{
+							costumes = tmp;
+
+
+							//refresh all
+							foreach(var costume in costumes.ToList())
+								costumes[costume.Key] = costume.Key.data.LoadTexture();
+							if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("the costumes have updated");
+						}
+
+						var names = new string[] { "All" };
+						names = lists.Select(ctrl => TranslationHelper.TryTranslate(ctrl.ChaFileControl.parameter.fullname, out var trans) ? trans : ctrl.ChaFileControl.parameter.fullname).ToArray();
+						#region Tabs
+						float h = 25.0f;
+						float bar = 15.0f;
+
+						toolPos = GUILayout.BeginScrollView(toolPos, true, false, GUI.skin.horizontalScrollbar, GUIStyle.none, GUILayout.Height(h + bar), GUILayout.ExpandWidth(true));
+						//	GUILayout.BeginHorizontal(GUILayout.ExpandHeight(false), GUILayout.ExpandWidth(true));
+
+
+
+						//tabstyle.wordWrap = true;
+
+						var selec = GUILayout.Toolbar(selectedChar, names, tabstyle, GUILayout.ExpandHeight(false), GUILayout.Width(winRec.width * 0.2f * names.Length));
+
+						//tab changed
+						if(selec != selectedChar)
+						{
+							selectedChar = selec;
+
+							if(names.Length > 0 && !names.InRange(selec))
+								selectedChar = selec = Mathf.Clamp(selec, 0, names.Length);
+
+							var mctrl = lists.InRange(selec - 1) ? lists.ElementAt(selec) : null;
+							skipFrames = (fashCtrl == null) != (mctrl == null) ? 3 : 0;
+							fashCtrl = mctrl;
+							//	Logger.LogMessage(ctrl ? "New Tab Selected" : "No Tab selected");
+
+							//Extra Code Here...
+
+
+						}
+
+						GUILayout.EndScrollView();
+
+						#endregion
+						//Card view Window
+						scrollPos = GUILayout.BeginScrollView(scrollPos, false, true,
+							//GUILayout.Height((winRec.height - txtH) * .65f),
+							GUILayout.ExpandWidth(true),
+							GUILayout.ExpandHeight(true)
+							);
+
+
+
+						if(costumes.Count > 0)
+						{
+							var tmporder = costumes.
+							Where(val => (val.Key.translatedName + $" {val.Key.name}").Search(search.Replace(" ", ""))
+							|| search.IsNullOrWhiteSpace()).ToList();
+
+							var sort =
+							new Func<KeyValuePair<CoordData, Texture2D>, object>
+							((k) =>
+							{
+								switch(sortVal / 2)
+								{
+								case 0:
+									return (object)tmporder.IndexOf(k);
+								case 1:
+									return (object)k.Key.translatedName.ToLower().Trim();
+								case 2:
+									return (object)k.Key.created;
+								case 3:
+									return (object)k.Key.updated;
+								default:
+									return (object)tmporder.IndexOf(k);
+								}
+							});
+
+							if(sortVal % 2 == 0)
+								tmporder = tmporder.OrderBy(sort).ToList();
+							else
+								tmporder = tmporder.OrderByDescending(sort).ToList();
+
+							GUIContent[] content = tmporder.Attempt(
+							   v => new GUIContent() { image = v.Value, tooltip = v.Key.translatedName }).ToArray();
+
+							var myStyle = new GUIStyle() { alignment = TextAnchor.LowerCenter };
+							myStyle.normal.textColor = Color.white.RGBMultiplied(.9f);
+							myStyle.focused.textColor = Color.cyan;
+							myStyle.wordWrap = true;
+
+							float w = (winRec.width - (100 * cfg.studioUIWidth.Value));
+							h = ((w == 0 ? .001f : w) / 3 * 1.5f * Mathf.Ceil(content.Length / 3.0f));
+							myStyle.fontSize = Mathf.CeilToInt(w / 18);
+							myStyle.padding.left = (int)(w * (1 / 3.0f) * .07f);
+							myStyle.padding.right = (int)(w * (1 / 3.0f) * .07f);
+							myStyle.padding.bottom = (int)(h / Mathf.Ceil(content.Length / 3.0f) * 0.12f);
+
+							selectNum = GUILayout.SelectionGrid(selectNum, content, 3,
+								GUILayout.Width(w),
+								GUILayout.Height(h));
+
+							//overlay
+							GUI.SelectionGrid(GUILayoutUtility.GetLastRect(), selectNum,
+								content.Attempt(v => new GUIContent() { text = v.tooltip, tooltip = v.tooltip }).ToArray()
+								, 3, myStyle);
+
+							selectKey = tmporder.InRange(selectNum) ?
+							tmporder.ElementAt(selectNum).Key : null;
+
+							tooltip = GUI.mouseTooltip;
+						}
+						else
+						{
+							selectNum = -1;
+							selectKey = null;
+							tooltip = "";
+						}
+						GUILayout.EndScrollView();
+						#endregion
+
+						#region Bot
+						//Bottom Buttons
+						GUILayout.BeginVertical(GUILayout.Height(winRec.height * .15f));
+
+						var colour1 = GUI.color;
+						var colour2 = GUI.contentColor;
+						var colour3 = GUI.backgroundColor;
+
+						GUI.color = Color.white;
+						GUI.contentColor = Color.white;
+
+						tmpSty = new GUIStyle(GUI.skin.button);
+						tmpSty.normal.textColor = tmpSty.normal.textColor.AlphaMultiplied(lists.Any() ? 1 : 0.60f);
+						if(!lists.Any())
+							tmpSty.active = tmpSty.hover = tmpSty.normal;
+
+						GUILayout.BeginHorizontal();
+						if(GUILayout.Button("Wear Selected", tmpSty))
+							if(selectedChar != 0)
+								fashCtrl.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
+							else
+								foreach(var fashion in lists)
+									if(selectKey != null)
+										fashion.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
+
+						if(GUILayout.Button("Wear Defult", tmpSty))
+							if(selectedChar != 0)
+								fashCtrl.WearDefaultFashion();
+							else
+								foreach(var fashion in lists)
+									fashion.WearDefaultFashion();
+						GUILayout.EndHorizontal();
+
+						GUILayout.BeginHorizontal();
+
+						if(GUILayout.Button("Load Coordinate[s]", tmpSty) && lists.Any())
+						{
+							ForeGrounder.SetCurrentForground();
+							GetNewCoordinateImages(fashCtrl);
+						}
+						if(GUILayout.Button("load current coordinate") && MakerAPI.InsideAndLoaded)
+						{
+							Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
+
+						}
+
+						GUILayout.EndHorizontal();
+
+						GUI.color = Color.white;
+						GUI.contentColor = Color.red;
+						GUI.backgroundColor = Color.white.RGBMultiplied(0.35f);
+
+						GUILayout.Space(5);
+						GUILayout.Label("DANGER ZONE");
+						GUILayout.Space(5);
+
+						GUILayout.BeginHorizontal();
+						if(GUILayout.Button("Remove selected"))
+							if(selectedChar != 0)
+								fashCtrl.RemoveFashion(selectKey);
+							else
+								foreach(var fashion in lists)
+									if(selectKey != null)
+										fashion.RemoveFashion(selectKey);
+
+						if(GUILayout.Button("Remove All"))
+							if(selectedChar != 0)
+								foreach(var all in fashCtrl.fashionData.Values.ToList())
+									fashCtrl.RemoveFashion(all);
+							else
+								foreach(var fashion in lists)
+									foreach(var all in fashion.fashionData.Values.ToList())
+										fashion.RemoveFashion(all);
+
+						GUI.color = colour1;
+						GUI.contentColor = colour2;
+						GUI.backgroundColor = colour3;
+
+						GUILayout.EndHorizontal();
+
+						GUILayout.EndVertical();//bot vertical
+						#endregion
+					}
+					catch(Exception e)
+					{
+						FashionLine_Core.Logger.LogError(e);
+					}
+
+					GUILayout.EndVertical();
+
+				});
 			}
 		}
 
@@ -640,11 +1082,13 @@ namespace FashionLine
 			toFashionOnlyBtn = null;
 			costTxt = null;
 			enableStudioUI = false;
-			customStudioUI.RemoveAllListeners();
+			customUI.RemoveAllListeners();
 			winRec = cfg.studioWinRec.Value;
 
 			if(isPersistantHndl != null)
 				cfg.areCoordinatesPersistant.SettingChanged -= isPersistantHndl;
+			if(addAccessoriesHndl != null)
+				cfg.addToCurrentAccessories.SettingChanged -= addAccessoriesHndl;
 
 		}
 
@@ -747,7 +1191,7 @@ namespace FashionLine
 			#region Top
 			//costume Name
 			costTxt = e.AddControl(new MyMakerText("", category, inst))
-				.AddToCustomGUILayout(topUI: true, newVertLine: true, pWidth: 0.70f, viewpercent: cfg.viewportUISpace.Value);
+				.AddToCustomGUILayout(topUI: true, newVertLine: true, pWidth: 0.30f, viewpercent: cfg.viewportUISpace.Value);
 
 			e.AddControl(new MakerDropdown(settingName: "", options: sortOptions, initialValue: 0, category: category, owner: inst))
 				.AddToCustomGUILayout(topUI: true, newVertLine: false, pWidth: 0.25f)
@@ -864,7 +1308,7 @@ namespace FashionLine
 			#endregion
 
 			#region Bottom
-			e.AddControl(new MakerToggle(category, "Make FashionLine Persistant", inst))
+			e.AddControl(new MakerToggle(category, "Make FashionLine Persistant", cfg.areCoordinatesPersistant.Value, inst))
 					.AddToCustomGUILayout(newVertLine: true)
 					.OnGUIExists((gui) =>
 					{
@@ -875,16 +1319,31 @@ namespace FashionLine
 							if(obj.Value != cfg.areCoordinatesPersistant.Value)
 								obj.Value = cfg.areCoordinatesPersistant.Value;
 						};
-						isPersistantHndl(null, null);
+						//isPersistantHndl(null, null);
 
 						gui.ValueChanged.Subscribe((on) =>
 						{
 							cfg.areCoordinatesPersistant.Value = on;
 						});
 					})
-					.tooltipMsg(cfg.areCoordinatesPersistant.Description.Description,
-					Instance)
-					;
+					.tooltipMsg(cfg.areCoordinatesPersistant.Description.Description, Instance);
+			e.AddControl(new MakerToggle(category, "Combine Accessories", cfg.addToCurrentAccessories.Value, inst))
+					.AddToCustomGUILayout(newVertLine: true)
+					.OnGUIExists((gui) =>
+					{
+						cfg.addToCurrentAccessories.SettingChanged += addAccessoriesHndl =
+						(s, a) =>
+						{
+							if(gui.Value != cfg.addToCurrentAccessories.Value)
+								gui.Value = cfg.addToCurrentAccessories.Value;
+						};
+
+						gui.ValueChanged.Subscribe((on) =>
+						{
+							cfg.addToCurrentAccessories.Value = on;
+						});
+					})
+					.tooltipMsg(cfg.addToCurrentAccessories.Description.Description, Instance);
 
 			e.AddControl(new MyMakerButton("Wear Selected", category, inst))
 				.AddToCustomGUILayout(newVertLine: true)
@@ -892,7 +1351,7 @@ namespace FashionLine
 				{
 					if(!tglGroup.AnyTogglesOn()) return;
 
-					fashCtrl.WearFashion(currentCoord, reload: true);
+					fashCtrl.WearFashion(currentCoord, cfg.addToCurrentAccessories.Value, reload: true);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
@@ -909,7 +1368,7 @@ namespace FashionLine
 				.OnClick.AddListener(() =>
 				{
 					ForeGrounder.SetCurrentForground();
-					GetNewImageTarget();
+					GetNewCoordinateImages(null);
 				});
 
 			e.AddControl(new MyMakerButton("Add Current Coordinate", category, inst))
@@ -982,6 +1441,11 @@ namespace FashionLine
 			inst.StartCoroutine(RemoveAllCoordinatesCO());
 		}
 
+		public void OnDestroy()
+		{
+			Cleanup();
+		}
+
 
 		#region Coroutine Helpers   
 
@@ -993,6 +1457,8 @@ namespace FashionLine
 
 			//	for( int a=0;a<12;++a)
 			//		yield return null;
+
+
 
 			var comp = GameObject.Instantiate<GameObject>(template.ControlObject, template.ControlObject.transform.parent);
 			var img = comp.GetComponentInChildren<RawImage>();
@@ -1114,7 +1580,7 @@ namespace FashionLine
 
 		//private static string MakeDirPath(string path) => MakeDirPath(path);
 
-		public static void GetNewImageTarget()
+		public static void GetNewCoordinateImages(FashionLine_Controller ctrl = null)
 		{
 			//	OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT;
 			FashionLine_Core.Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
@@ -1132,7 +1598,7 @@ namespace FashionLine
 
 			cfg.lastCoordDir.Value = path?.Substring(0, path.LastIndexOf('/')) ?? TargetDirectory;
 
-			OnImageTargetObtained(paths);
+			OnCoordinateImagesObtained(paths, ctrl);
 			if(paths.Any())
 				Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 			else
@@ -1143,7 +1609,7 @@ namespace FashionLine
 		/// Called after a file is chosen in file explorer menu  
 		/// </summary>
 		/// <param name="strings: ">the info returned from file explorer. strings[0] returns the full file path</param>
-		private static void OnImageTargetObtained(string[] strings)
+		private static void OnCoordinateImagesObtained(string[] strings, FashionLine_Controller ctrl = null)
 		{
 
 			ForeGrounder.RevertForground();
@@ -1172,7 +1638,13 @@ namespace FashionLine
 
 				var fashCtrls = InsideStudio ?
 					StudioAPI.GetSelectedControllers<FashionLine_Controller>() :
-					MakerAPI.GetCharacterControl().GetComponents<FashionLine_Controller>();
+					ctrl != null ? new List<FashionLine_Controller>() { ctrl } :
+#if KKS
+					Character.GetCharaList(1).Concat(Character.GetCharaList(0)).Select(mctrl => mctrl.GetComponent<FashionLine_Controller>());
+#else
+					Character.Instance.GetCharaList(1).Concat(Character.Instance.GetCharaList(0)).Select(mctrl => mctrl.GetComponent<FashionLine_Controller>());
+#endif
+				;
 
 
 				var coord = new ChaFileCoordinate();
@@ -1189,8 +1661,8 @@ namespace FashionLine
 					updated = File.GetLastWriteTime(texPath)
 				};
 
-				foreach(var ctrl in fashCtrls)
-					ctrl.AddFashion(name, data);
+				foreach(var mctrl in fashCtrls)
+					mctrl.AddFashion(name, data);
 
 			}
 
