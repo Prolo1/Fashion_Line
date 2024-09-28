@@ -12,7 +12,7 @@ using UnityEngine.UI;
 using TMPro;
 
 using ProloAPI;
-using ProloAPI.Extentions;
+using ProloAPI.Extensions;
 
 using KKAPI;
 using KKAPI.Studio;
@@ -47,22 +47,22 @@ using static FashionLine.FashionLine_Core;
 
 namespace FashionLine
 {
-	using static ProloAPI.Utilities.Util_General;
+	using static ProloAPI.Utilities.PGeneral;
 
 	#region dependencies
 	[
 	// Tell BepInEx that we need KKAPI to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(KKAPI.KoikatuAPI.GUID, KKAPI.KoikatuAPI.VersionConst),
+	BepInDependency(KoikatuAPI.GUID, KoikatuAPI.VersionConst),
 	// Tell BepInEx that we need ExtendedSave to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(ExtensibleSaveFormat.ExtendedSave.GUID, ExtensibleSaveFormat.ExtendedSave.Version),
+	BepInDependency(ExtendedSave.GUID, ExtendedSave.Version),
 	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency),
 	// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(KoiClothesOverlayX.KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency),
+	BepInDependency(KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency),
 	//// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	//// Check documentation of KoikatuAPI.VersionConst for more info.
 	//BepInDependency(All_BrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency),
@@ -106,11 +106,12 @@ namespace FashionLine
 			public ConfigEntry<bool> addToCurrentAccessories { get; set; }
 			public ConfigEntry<KeyboardShortcut> prevInLine { get; set; }
 			public ConfigEntry<KeyboardShortcut> nextInLine { get; set; }
+			public ConfigEntry<KeyboardShortcut> openFloatingMenu { get; set; }
 
 			//Studio
 			public ConfigEntry<bool> useCreatorDefaultBG { get; set; }
 			public ConfigEntry<bool> enableBGUI { get; set; }
-			public ConfigEntry<string> bgUIImagepath { get; set; }
+			public ConfigEntry<string> bgUIImagePath { get; set; }
 
 			//Advanced
 			public ConfigEntry<bool> resetOnLaunch { get; set; }
@@ -129,9 +130,11 @@ namespace FashionLine
 		}
 		#endregion
 
+		public static new FashionLine_Core Instance { get => ProloUnityPlugin<FashionLine_Core>.Instance; }
+		public static new ManualLogSource Logger { get => ProloUnityPlugin<FashionLine_Core>.Logger; }
 		#endregion
 
-		void initConfig()
+		public void initConfig()
 		{
 
 			#region Values
@@ -144,10 +147,14 @@ namespace FashionLine
 			//string mainx =
 			//$"{secIndex++:d2}. " + main;
 
+			string floating = "Floating GUI";
+			string floatingx =
+			$"{secIndex++:d2}. " + floating;
+
 			string stud = "Studio";
 			string studx =
 			$"{secIndex++:d2}. " + stud;
-
+			
 			string adv = "Advanced";
 			string advx =
 			$"{secIndex2--:d2}. " + adv;
@@ -173,25 +180,28 @@ namespace FashionLine
 				nextInLine = Config.Bind(main, "Next In Line", KeyboardShortcut.Empty,
 				new ConfigDescription("Switch the current outfit with the next outfit in the list", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
+				openFloatingMenu = Config.Bind(main, "Open Floating Menu", new KeyboardShortcut(KeyCode.F, KeyCode.LeftControl, KeyCode.LeftShift),
+				new ConfigDescription("open the floating FashionLine menu anywhere at any time", null,
+				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
-				//Studio
-				useCreatorDefaultBG = Config.Bind(stud, "Use Creator Default BG", true,
+				//Floating UI
+				useCreatorDefaultBG = Config.Bind(floating, "Use Creator Default BG", true,
 				new ConfigDescription("Use the creator recommended background as a default 😄", null,
 				new ConfigurationManagerAttributes()
 				{
 					Order = index--,
-					Category = studx,
+					Category = floatingx,
 					Browsable = StudioAPI.InsideStudio,
 				})),
-				enableBGUI = Config.Bind(stud, "Enable BG UI", true,
+				enableBGUI = Config.Bind(floating, "Enable BG UI", true,
 				new ConfigDescription("Use your own background as a default 😄", null,
-				new ConfigurationManagerAttributes() { Order = index--, Category = studx, Browsable = false })),
-				bgUIImagepath = Config.Bind(stud, "BG UI Image Path", "",
+				new ConfigurationManagerAttributes() { Order = index--, Category = floatingx, Browsable = false })),
+				bgUIImagePath = Config.Bind(floating, "BG UI Image Path", "",
 				new ConfigDescription("Use your own background image (will be [gray / creator defult] otherwise)", null,
 				new ConfigurationManagerAttributes()
 				{
 					Order = index--,
-					Category = studx,
+					Category = floatingx,
 					Browsable = StudioAPI.InsideStudio,
 				})),
 
@@ -242,6 +252,39 @@ namespace FashionLine
 						IsAdvanced = true,
 						Category = advx
 					})).ConfigDefaulter(cfg);
+
+
+				void RectDraw(ConfigEntryBase draw)
+				{
+					if(!(draw is ConfigEntry<Rect>)) return;
+
+					Rect tmp = new Rect((Rect)draw.BoxedValue);
+					GUILayout.BeginHorizontal();
+
+					GUILayout.Label("X", GUILayout.ExpandWidth(false));
+					//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
+					float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
+
+					GUILayout.Label("Y", GUILayout.ExpandWidth(false));
+					//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
+					float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
+
+					GUILayout.Label("Width", GUILayout.ExpandWidth(false));
+					//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
+					float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
+
+					GUILayout.Label("Height", GUILayout.ExpandWidth(false));
+					//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
+					float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
+
+
+					GUILayout.EndHorizontal();
+
+					if((Rect)draw.BoxedValue != tmp)
+						draw.BoxedValue = tmp;
+				}
+
+
 				cfg.studioWinRec = Config.Bind(adv, "Studio Win Rect", FashionLine_GUI.winRec,
 					new ConfigDescription("reset the window location / Size if needed", null,
 					new ConfigurationManagerAttributes()
@@ -249,33 +292,7 @@ namespace FashionLine
 						Order = index--,
 						ShowRangeAsPercent = false,
 						IsAdvanced = true,
-						CustomDrawer = (draw) =>
-						{
-							Rect tmp = new Rect(cfg.studioWinRec.Value);
-							GUILayout.BeginHorizontal();
-
-							GUILayout.Label("X", GUILayout.ExpandWidth(false));
-							//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
-
-							GUILayout.Label("Y", GUILayout.ExpandWidth(false));
-							//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
-
-							GUILayout.Label("Width", GUILayout.ExpandWidth(false));
-							//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
-
-							GUILayout.Label("Height", GUILayout.ExpandWidth(false));
-							//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
-
-
-							GUILayout.EndHorizontal();
-
-							if(cfg.studioWinRec.Value != tmp)
-								cfg.studioWinRec.Value = tmp;
-						},
+						CustomDrawer = RectDraw,
 						Category = advx
 					}));
 				cfg.studioSortOffset = Config.Bind(adv, "Studio Sort Offset", FashionLine_GUI.offsetRect,
@@ -285,33 +302,7 @@ namespace FashionLine
 						Order = index--,
 						ShowRangeAsPercent = false,
 						IsAdvanced = true,
-						CustomDrawer = (draw) =>
-						{
-							Rect tmp = new Rect(cfg.studioSortOffset.Value);
-							GUILayout.BeginHorizontal();
-
-							GUILayout.Label("X", GUILayout.ExpandWidth(false));
-							//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
-
-							GUILayout.Label("Y", GUILayout.ExpandWidth(false));
-							//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
-
-							GUILayout.Label("Width", GUILayout.ExpandWidth(false));
-							//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
-
-							GUILayout.Label("Height", GUILayout.ExpandWidth(false));
-							//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
-
-
-							GUILayout.EndHorizontal();
-
-							if(cfg.studioSortOffset.Value != tmp)
-								cfg.studioSortOffset.Value = tmp;
-						},
+						CustomDrawer = RectDraw,
 						Category = advx
 					}));
 
@@ -332,33 +323,7 @@ namespace FashionLine
 						Order = index--,
 						ShowRangeAsPercent = false,
 						IsAdvanced = true,
-						CustomDrawer = (draw) =>
-						{
-							Rect tmp = new Rect(cfg.makerWinRec.Value);
-							GUILayout.BeginHorizontal();
-
-							GUILayout.Label("X", GUILayout.ExpandWidth(false));
-							//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
-
-							GUILayout.Label("Y", GUILayout.ExpandWidth(false));
-							//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
-
-							GUILayout.Label("Width", GUILayout.ExpandWidth(false));
-							//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
-
-							GUILayout.Label("Height", GUILayout.ExpandWidth(false));
-							//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
-
-
-							GUILayout.EndHorizontal();
-
-							if(cfg.makerWinRec.Value != tmp)
-								cfg.makerWinRec.Value = tmp;
-						},
+						CustomDrawer = RectDraw,
 						Category = advx
 					}));
 				cfg.makerSortOffset = Config.Bind(adv, "Maker Sort Offset", FashionLine_GUI.offsetRect,
@@ -368,33 +333,7 @@ namespace FashionLine
 						Order = index--,
 						ShowRangeAsPercent = false,
 						IsAdvanced = true,
-						CustomDrawer = (draw) =>
-						{
-							Rect tmp = new Rect(cfg.makerSortOffset.Value);
-							GUILayout.BeginHorizontal();
-
-							GUILayout.Label("X", GUILayout.ExpandWidth(false));
-							//tmp.x = GUILayout.HorizontalSlider(tmp.x, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.x)), out tmp.m_XMin);
-
-							GUILayout.Label("Y", GUILayout.ExpandWidth(false));
-							//tmp.y = GUILayout.HorizontalSlider(tmp.y, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.y)), out tmp.m_YMin);
-
-							GUILayout.Label("Width", GUILayout.ExpandWidth(false));
-							//tmp.width = GUILayout.HorizontalSlider(tmp.width, 0, Screen.width, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.width)), out tmp.m_Width);
-
-							GUILayout.Label("Height", GUILayout.ExpandWidth(false));
-							//tmp.height = GUILayout.HorizontalSlider(tmp.height, 0, Screen.height, GUILayout.ExpandWidth(true));
-							float.TryParse(GUILayout.TextField(string.Format("{0:f0}", tmp.height)), out tmp.m_Height);
-
-
-							GUILayout.EndHorizontal();
-
-							if(cfg.makerSortOffset.Value != tmp)
-								cfg.makerSortOffset.Value = tmp;
-						},
+						CustomDrawer = RectDraw,
 						Category = advx
 					}));
 
@@ -407,7 +346,7 @@ namespace FashionLine
 			//Drawers
 			{
 
-				var cfgmngatrib = cfg.bgUIImagepath.Description.Tags.OfType<ConfigurationManagerAttributes>().FirstOrDefault();
+				var cfgmngatrib = cfg.bgUIImagePath.Description.Tags.OfType<ConfigurationManagerAttributes>().FirstOrDefault();
 				cfgmngatrib.CustomDrawer = (a) =>
 				{
 					GUILayout.BeginHorizontal();
@@ -437,10 +376,10 @@ namespace FashionLine
 			//CfgUpdate();
 
 
-			FashionLine_GUI.userTexUI = (cfg.bgUIImagepath.Value).CreateTexture();
-			cfg.bgUIImagepath.SettingChanged += (m, n) =>
+			FashionLine_GUI.userTexUI = (cfg.bgUIImagePath.Value).CreateTexture();
+			cfg.bgUIImagePath.SettingChanged += (m, n) =>
 			{
-				FashionLine_GUI.userTexUI = (cfg.bgUIImagepath.Value).CreateTexture();
+				FashionLine_GUI.userTexUI = (cfg.bgUIImagePath.Value).CreateTexture();
 			};
 
 			cfg.viewportUISpace.SettingChanged += (m, n) =>
@@ -473,7 +412,7 @@ namespace FashionLine
 			};
 		}
 
-		void Awake()
+		internal void Awake()
 		{
 			Debug = true;
 
@@ -569,14 +508,14 @@ namespace FashionLine
 				   });
 			}
 
-			//Logger.LogInfo("start initconfig");
+			Logger.LogInfo("start initconfig");
 			initConfig();
 
-			//Logger.LogInfo("start init hooks");
+			Logger.LogInfo("start init hooks");
 			Hooks.Init();
-			//Logger.LogInfo("start regester behavior");
+			Logger.LogInfo("start regester behavior");
 			CharacterApi.RegisterExtraBehaviour<FashionLine_Controller>(GUID);
-			//Logger.LogInfo("start gui regester");
+			Logger.LogInfo("start gui regester");
 			FashionLine_GUI.Init();
 
 			//Instantiate(new GameObject(), null).AddComponent<Canvas>();
@@ -594,6 +533,8 @@ namespace FashionLine
 				foreach(var ctrl in list)
 					ctrl.PrevInLine();
 
+			if(cfg.openFloatingMenu.Value.IsDown())
+				FashionLine_GUI.enableImmediateUI = !FashionLine_GUI.enableImmediateUI;
 		}
 
 		void CfgUpdate()
@@ -619,6 +560,5 @@ namespace FashionLine
 		}
 
 	}
-
 
 }

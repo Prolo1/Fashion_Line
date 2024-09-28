@@ -9,7 +9,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 using ProloAPI;
-using ProloAPI.Extentions;
+using ProloAPI.Extensions;
 
 using KKAPI.Chara;
 using KKAPI.Maker;
@@ -38,7 +38,7 @@ using static BepInEx.Logging.LogLevel;
 
 namespace FashionLine
 {
-
+	using static FashionLine_Core;
 	/// <summary>
 	/// saves controls from current data. make a new one if variables change
 	/// </summary>
@@ -65,7 +65,6 @@ namespace FashionLine
 				if(data != null && data.version == base.Version)
 				{
 					var oldData = LZ4MessagePackSerializer.Deserialize<Dictionary<string, OldCoordData>>((byte[])data.data[DataKeys[(int)SaveLoadManagerV1.LoadDataType.Data]], CompositeResolver.Instance);
-
 
 					data.data[DataKeys[(int)LoadDataType.Data]] =
 						LZ4MessagePackSerializer.Serialize(oldData.ToDictionary(k => k.Key,
@@ -105,14 +104,14 @@ namespace FashionLine
 
 				if(carddata == null) throw new Exception("Data does not exist");
 
-				//FashionLine_Core.Logger.LogInfo($"cardata count: {carddata.Count}");
+				//Logger.LogInfo($"cardata count: {carddata.Count}");
 				foreach(var line in carddata)
 					ctrl.AddFashion(line.Key, line.Value, overwrite: true);
 			}
 			catch(Exception e)
 			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not load PluginData:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
+				Logger.Log(Error | Message, $"Could not load PluginData:\n{e.Message}");
+				Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
 
@@ -142,8 +141,8 @@ namespace FashionLine
 			}
 			catch(Exception e)
 			{
-				FashionLine_Core.Logger.Log(Error | Message, $"Could not save PluginData:\n{e.Message}");
-				FashionLine_Core.Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
+				Logger.Log(Error | Message, $"Could not save PluginData:\n{e.Message}");
+				Logger.Log(Error, $"\n{e.TargetSite}\n{e.StackTrace}\n");
 				return null;
 			}
 			ctrl.SetExtendedData(data);

@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 using TMPro;
 
 using ProloAPI;
-using ProloAPI.Extentions;
+using ProloAPI.Extensions;
 
 using BepInEx;
 using KKAPI;
@@ -20,11 +20,15 @@ using KKAPI.Studio.UI;
 using KKAPI.Utilities;
 using KKAPI.Maker;
 using KKAPI.Maker.UI;
+using KKAPI.Maker.UI.Sidebar;
 
 using UniRx;
 using Studio;
 using HarmonyLib;
 using Illusion.Game;
+using Illusion.Extensions;
+
+
 
 #if HONEY_API
 using AIChara;
@@ -35,9 +39,6 @@ using ChaCustom;
 
 using static KKAPI.Maker.MakerAPI;
 using static KKAPI.Studio.StudioAPI;
-using static FashionLine.FashionLine_Core;
-using static ProloAPI.Utilities.Util_General;
-using static ProloAPI.Utilities.Util_GUI;
 using KKAPI.MainGame;
 using KKAPI.Chara;
 //using static FashionLine.Fash_Util;
@@ -45,11 +46,11 @@ using KKAPI.Chara;
 
 namespace FashionLine
 {
-	using Illusion.Extensions;
-
-	using KKAPI.Maker.UI.Sidebar;
-
+	using static FashionLine_Core;
+	using static ProloAPI.Utilities.PGeneral;
+	using static ProloAPI.Utilities.PGUI;
 	using Manager;
+
 	public class FashionLine_GUI : ProloGUIBehaviour<FashionLine_GUI>
 	{
 		#region Classes
@@ -110,7 +111,6 @@ namespace FashionLine
 		internal static MakerImage template = null;
 		public static Button coordToFashionBtn = null;
 		public static Button toFashionOnlyBtn = null;
-		static bool enableImmediateUI = false;
 #if HONEY_API
 		public static CvsO_Type charaCustom { get; private set; } = null;
 		public static CvsB_ShapeBreast boobCustom { get; private set; } = null;
@@ -128,20 +128,21 @@ namespace FashionLine
 		#endregion
 
 		#region Immediate GUI
-		#endregion
-
-		#region Studio
-		static CurrentStateCategory categoryStudio;
+		internal static bool enableImmediateUI = false;
 		internal static Texture2D userTexUI = Texture2D.blackTexture;
 		internal static UnityEvent customUI = new UnityEvent();
 		internal static Rect winRec = new Rect(105, 390, 440, 600);
 		internal static Rect offsetRect = new Rect(new Vector2(winRec.width, 0), new Vector2(200, 200));
 		static Rect sortRect = new Rect();
+		static Func<int> sortDropdown = null;
+		static int sortVal = -1;
+		#endregion
+
+		#region Studio
+		static CurrentStateCategory categoryStudio;
 		static ToolbarToggle tgl;
 		static bool enableStudioUI = false;
 		static bool enableStudioUISort = false;
-		static Func<int> sortDropdown = null;
-		static int sortVal = -1;
 		#endregion
 
 		#endregion
@@ -194,7 +195,7 @@ namespace FashionLine
 
 						if(sortDropdown == null)
 							sortDropdown = GUILayoutDropdownDrawer
-							((x, index) => new GUIContent() { text = x[index] }
+							((string[] x, int index) => new GUIContent() { text = x[index] }
 							, sortOptions, -1,
 							onSelect: (selected) =>
 							{
@@ -228,7 +229,7 @@ namespace FashionLine
 		{
 			if(!enableImmediateUI) return;
 
-			var camCtrl = Studio.Studio.Instance.cameraCtrl;
+			//var camCtrl = Studio.Studio.Instance.cameraCtrl;
 
 			var colour1 = GUI.color;
 			var colour2 = GUI.contentColor;
@@ -237,12 +238,12 @@ namespace FashionLine
 			GUI.color = Color.white;
 			GUI.contentColor = Color.white;
 
-			//null coalescing is necessary
+			//null coalescing is necessary (to look cool 😎)
 			var bgTex = cfg.enableBGUI.Value ? userTexUI ??
 					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex) :
 					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex);
 
-			
+
 			GUI.DrawTexture(winRec = GUI.Window((GUID + "1").GetHashCode(),
 				winRec, id =>
 				{
@@ -254,8 +255,8 @@ namespace FashionLine
 					winRec = IMGUIUtils.DragResizeEatWindow(id, winRec);
 
 
-					if(!cfg.studioWinRec.Value.Equals(winRec))
-						cfg.studioWinRec.Value = new Rect(winRec);
+					if(!cfg.makerWinRec.Value.Equals(winRec))
+						cfg.makerWinRec.Value = new Rect(winRec);
 				}, ModName),
 				bgTex,
 				ScaleMode.StretchToFill);
@@ -265,6 +266,8 @@ namespace FashionLine
 				GUI.DrawTexture(sortRect = GUI.Window((GUID + "2").GetHashCode(), sortRect,
 					(id) =>
 					{
+						//	return;//temporary
+
 						colour1 = GUI.color;
 						colour2 = GUI.contentColor;
 						colour3 = GUI.backgroundColor;
@@ -273,7 +276,7 @@ namespace FashionLine
 
 						if(sortDropdown == null)
 							sortDropdown = GUILayoutDropdownDrawer
-							((x, index) => new GUIContent() { text = x[index] }
+							((string[] x, int index) => new GUIContent() { text = x[index] }
 							, sortOptions, -1,
 							onSelect: (selected) =>
 							{
@@ -291,14 +294,14 @@ namespace FashionLine
 						IMGUIUtils.EatInputInRect(sortRect);
 						offsetRect = new Rect(sortRect.position - winRec.position, sortRect.size);
 
-						if(offsetRect != cfg.studioSortOffset.Value)
-							cfg.studioSortOffset.Value = offsetRect;
+						if(offsetRect != cfg.makerSortOffset.Value)
+							cfg.makerSortOffset.Value = offsetRect;
 
 					}, "Sort Options"),
 					bgTex,
 					ScaleMode.StretchToFill);
 
-			 
+
 			GUI.color = colour1;
 			GUI.contentColor = colour2;
 			GUI.backgroundColor = colour3;
@@ -310,13 +313,15 @@ namespace FashionLine
 
 			void OnLoad()
 			{
-				//if(Instance.gameObject)
-				//	DestroyImmediate(Instance.gameObject);
+				Logger.LogInfo("Try make Fashion line GUI object");
+				if(Instance?.gameObject)
+					DestroyImmediate(Instance.gameObject);
 
 				//Allow OnGUI() to run
 				var obj = CreateGameObject("FashionLine_GUI", typeof(FashionLine_GUI));
 				obj.transform.SetAsLastSibling();
-				GameObject.DontDestroyOnLoad(obj);
+				DontDestroyOnLoad(obj);
+				Logger.LogInfo("Finished making Fashion line GUI object");
 			};
 			OnLoad();
 
@@ -326,6 +331,7 @@ namespace FashionLine
 			if(InsideStudio)
 			{
 
+				Instance.guiEvent.RemoveListener(StudioGUI);
 				Instance.guiEvent.AddListener(StudioGUI);
 				StudioLoadedChanged += (s, e) =>
 				{
@@ -368,7 +374,9 @@ namespace FashionLine
 				#endregion
 
 				//update loop
-				customUI.AddListener(() =>
+				customUI.RemoveListener(act);
+				customUI.AddListener(act);
+				void act()
 				{
 					GUILayout.BeginVertical();
 
@@ -436,7 +444,7 @@ namespace FashionLine
 						GUILayout.ExpandHeight(true)
 						);
 
-					var lists = StudioAPI.GetSelectedControllers<FashionLine_Controller>();
+					var lists = GetSelectedControllers<FashionLine_Controller>();
 					var tmp =
 					lists.SelectMany(s => s.fashionData.Values).Distinct()
 					 .ToDictionary(k => k, v => costumes.TryGetValue(v, out var val1) ? val1 : null);
@@ -448,7 +456,7 @@ namespace FashionLine
 						//refresh all
 						foreach(var costume in costumes.ToList())
 							costumes[costume.Key] = costume.Key.data.LoadTexture();
-						if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("the costumes have updated");
+						if(cfg.debug.Value) Logger.LogDebug("the costumes have updated");
 					}
 
 					if(costumes.Count > 0)
@@ -531,11 +539,11 @@ namespace FashionLine
 					GUI.contentColor = Color.white;
 
 
-					var addAcc=GUILayout.Toggle(cfg.addToCurrentAccessories.Value, GUIContent.Temp("Combine Accessories", cfg.addToCurrentAccessories.Description.Description));
+					var addAcc = GUILayout.Toggle(cfg.addToCurrentAccessories.Value, GUIContent.Temp("Combine Accessories", cfg.addToCurrentAccessories.Description.Description));
 
 					if(addAcc != cfg.addToCurrentAccessories.Value)
 						cfg.addToCurrentAccessories.Value = addAcc;
-					
+
 					tmpSty = new GUIStyle(GUI.skin.button);
 					tmpSty.normal.textColor = tmpSty.normal.textColor.AlphaMultiplied(lists.Any() ? 1 : 0.60f);
 					if(!lists.Any())
@@ -545,11 +553,11 @@ namespace FashionLine
 					if(GUILayout.Button("Wear Selected", tmpSty))
 						foreach(var fashion in lists)
 							if(selectKey != null)
-								fashion.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
+								fashion.WearFashion(selectKey, cfg.addToCurrentAccessories.Value, reload: true);
 
 					if(GUILayout.Button("Wear Defult", tmpSty))
 						foreach(var fashion in lists)
-							fashion.WearDefaultFashion();
+							fashion.WearDefaultFashion(reload: true);
 					GUILayout.EndHorizontal();
 
 					GUILayout.BeginHorizontal();
@@ -592,11 +600,11 @@ namespace FashionLine
 					#endregion
 
 					GUILayout.EndVertical();
-
-				});
+				}
 			}
 			else
 			{
+
 				#region Maker
 				RegisterCustomSubCategories += (s, e) =>
 				{
@@ -612,18 +620,21 @@ namespace FashionLine
 					// category2 = new MakerCategory(MakerConstants.Clothes.CategoryName, "Save / Delete");
 					e.AddSubCategory(category);
 
-					MakerAPI.AddSidebarControl(new SidebarToggle("Show Floating Fashionline", enableImmediateUI, FashionLine_Core.Instance))
+					AddSidebarControl(new SidebarToggle("Show Floating Fashionline", enableImmediateUI, FashionLine_Core.Instance))
 					.OnGUIExists(gui =>
 					{
 						gui.ValueChanged.Subscribe((val) =>
 						{
 							enableImmediateUI = val;
 						});
-
-
 					});
 				};
-				MakerBaseLoaded += (s, e) => { AddFashionLineMenu_Maker(e); };
+				MakerBaseLoaded += (s, e) =>
+				{
+					AddFashionLineMenu_Maker(e);
+					////Maker update loop (would be deleted otherwise)
+					//customUI.AddListener(act);
+				};
 				MakerFinishedLoading += (s, e) =>
 				{
 					var allCvs =
@@ -720,7 +731,7 @@ namespace FashionLine
 						}
 						catch(Exception ex)
 						{
-							FashionLine_Core.Logger.LogError("could not subscribe to value change: " + ex);
+							Logger.LogError("could not subscribe to value change: " + ex);
 						}
 
 						//Onclick code is done in a hook...
@@ -742,10 +753,13 @@ namespace FashionLine
 				MakerExiting += (s, e) => { Cleanup(); };
 				#endregion
 
+				Logger.LogInfo("Adding Immediate GUI");
 
+				#region Immediate GUI
+				Instance.guiEvent.RemoveListener(ImmediateGUI);
+				Instance.guiEvent.AddListener(ImmediateGUI);
 
-					Instance.guiEvent.AddListener(ImmediateGUI);
-
+				Logger.LogInfo("Adding Immediate GUI variables");
 				#region Init Values
 				Dictionary<CoordData, Texture2D> costumes = new Dictionary<CoordData, Texture2D>();
 				Vector2 scrollPos = Vector2.zero;
@@ -757,26 +771,37 @@ namespace FashionLine
 
 				winRec = new Rect(cfg.makerWinRec.Value);
 				offsetRect = new Rect(cfg.makerSortOffset.Value);
-				var tmpSty = new GUIStyle(GUI.skin.label);
 				#endregion
 
-				var tabstyle = new GUIStyle(GUI.skin.button)
-				{
-
-					padding = new RectOffset(5, 5, 5, 0),
-					alignment = TextAnchor.UpperLeft
-
-				};
 				Vector2 toolPos = Vector2.zero;
 				int selectedChar = 0;
-				int skipFrames = 0;
+				int skipFrames = -1;
 				FashionLine_Controller fashCtrl = null;
+				GUIStyle tmpSty = null;
+				GUIStyle tabstyle = null;
+				Texture2D redTex = ColourTex(Color.red);
 
-				//Maker update loop
-				customUI.AddListener(() =>
+				void act()
 				{
-					//if((skipFrames = Math.Max(-1, --skipFrames)) > -1)
-					//	return;
+
+
+					//Logger.LogInfo("Got to custom UI!!");
+					if((skipFrames = Math.Max(-1, --skipFrames)) > -1)
+						return;
+
+					#region Init GUIStyles
+					//if(tmpSty == null)
+					tmpSty = new GUIStyle(GUI.skin.label);
+					if(tabstyle == null)
+						tabstyle = new GUIStyle(GUI.skin.button)
+						{
+
+							padding = new RectOffset(5, 5, 5, 0),
+							alignment = TextAnchor.UpperLeft
+
+						};
+					#endregion
+
 					GUILayout.BeginVertical();
 					try
 					{
@@ -796,10 +821,34 @@ namespace FashionLine
 						sel = tooltip.IsNullOrWhiteSpace() ? sel : tooltip;
 
 						int fws = (int)(Mathf.Clamp(winRec.width, .001f, winRec.width) / 16);
-						tmpSty.fontSize = Math.Min(75, (int)(fws/* * (1.0f / sel.Length * 15)*/));
+						tmpSty.fontSize = Math.Min(75, (int)(fws));
 
 						GUILayout.Label(sel, tmpSty, GUILayout.Height(tmpSty.lineHeight));
 						float txtH = GUILayoutUtility.GetLastRect().height;
+						#endregion
+
+						#region close btn
+						var colour1 = GUI.color.RGBMultiplied(1);
+						var colour2 = GUI.contentColor.RGBMultiplied(1);
+						var colour3 = GUI.backgroundColor.RGBMultiplied(1);
+
+						GUI.backgroundColor = Color.red.RGBMultiplied(.8f);
+
+						var btnSty = new GUIStyle(GUI.skin.button);
+						btnSty.normal.background = redTex;
+						btnSty.alignment = TextAnchor.MiddleCenter;
+
+						//btnSty.stretchHeight = true;
+						var btnSize = new Vector2(winRec.width * .1f, 15);
+						var btnPos = new Vector2(winRec.width - btnSize.x - 3, 3);
+						var myrect = new Rect(btnPos, btnSize);
+						if(GUI.Button(myrect, "X"))
+							enableImmediateUI = false;
+
+						GUI.color = colour1;
+						GUI.contentColor = colour2;
+						GUI.backgroundColor = colour3;
+						//	Logger.LogDebug($"close rect: {myrect}");
 						#endregion
 
 						#region Search Bar
@@ -839,14 +888,20 @@ namespace FashionLine
 
 						//Character choices
 						var lists = (IEnumerable<FashionLine_Controller>)null;
+
+						try
+						{
 #if KKS
-						lists = Character.GetCharaList(1).Concat(Character.GetCharaList(0)).Select(ctrl => ctrl.GetComponent<FashionLine_Controller>());
+							lists = Character.GetCharaList(1).Concat(Character.GetCharaList(0)).Select(ctrl => ctrl.GetComponent<FashionLine_Controller>());
 #else
-					lists = Character.Instance.GetCharaList(1).Concat(Character.Instance.GetCharaList(0)).Select(ctrl => ctrl.GetComponent<FashionLine_Controller>());
+							lists = Character.Instance.GetCharaList(1).Concat(Character.Instance.GetCharaList(0)).Select(ctrl => ctrl.GetComponent<FashionLine_Controller>());
 #endif
+						}
+						catch(Exception e) { Logger.LogError($"List did not initialize\n{e}"); }
+
 						var tmp =
-				lists.SelectMany(s => s.fashionData.Values).Distinct()
-				 .ToDictionary(k => k, v => costumes.TryGetValue(v, out var val1) ? val1 : null);
+						lists.SelectMany(s => s.fashionData.Values).Distinct()
+						.ToDictionary(k => k, v => costumes.TryGetValue(v, out var val1) ? val1 : null);
 
 						if(!tmp.Keys.SequenceEqual(costumes.Keys))
 						{
@@ -856,11 +911,13 @@ namespace FashionLine
 							//refresh all
 							foreach(var costume in costumes.ToList())
 								costumes[costume.Key] = costume.Key.data.LoadTexture();
-							if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug("the costumes have updated");
+							if(cfg.debug.Value) Logger.LogDebug("the costumes have updated");
 						}
 
+						var name = "";
 						var names = new string[] { "All" };
-						names = lists.Select(ctrl => TranslationHelper.TryTranslate(ctrl.ChaFileControl.parameter.fullname, out var trans) ? trans : ctrl.ChaFileControl.parameter.fullname).ToArray();
+						names = names.Concat(lists.Select(ctrl => TranslationHelper.TryTranslate(name = ctrl.ChaFileControl.parameter.fullname, out var trans) ? trans : name)).ToArray();
+
 						#region Tabs
 						float h = 25.0f;
 						float bar = 15.0f;
@@ -882,14 +939,15 @@ namespace FashionLine
 							if(names.Length > 0 && !names.InRange(selec))
 								selectedChar = selec = Mathf.Clamp(selec, 0, names.Length);
 
-							var mctrl = lists.InRange(selec - 1) ? lists.ElementAt(selec) : null;
+							var mctrl = lists.InRange(selec - 1) ? lists.ElementAt(selec - 1) : null;
 							skipFrames = (fashCtrl == null) != (mctrl == null) ? 3 : 0;
 							fashCtrl = mctrl;
+
+
 							//	Logger.LogMessage(ctrl ? "New Tab Selected" : "No Tab selected");
 
 							//Extra Code Here...
-
-
+							skipFrames = 1;
 						}
 
 						GUILayout.EndScrollView();
@@ -901,8 +959,6 @@ namespace FashionLine
 							GUILayout.ExpandWidth(true),
 							GUILayout.ExpandHeight(true)
 							);
-
-
 
 						if(costumes.Count > 0)
 						{
@@ -938,8 +994,12 @@ namespace FashionLine
 							   v => new GUIContent() { image = v.Value, tooltip = v.Key.translatedName }).ToArray();
 
 							var myStyle = new GUIStyle() { alignment = TextAnchor.LowerCenter };
+#if HONEY_API
 							myStyle.normal.textColor = Color.white.RGBMultiplied(.9f);
-							myStyle.focused.textColor = Color.cyan;
+#elif KOI_API
+							myStyle.normal.textColor = Color.black.RGBMultiplied(.9f);
+#endif
+							myStyle.active.textColor = Color.cyan;
 							myStyle.wordWrap = true;
 
 							float w = (winRec.width - (100 * cfg.studioUIWidth.Value));
@@ -975,10 +1035,17 @@ namespace FashionLine
 						#region Bot
 						//Bottom Buttons
 						GUILayout.BeginVertical(GUILayout.Height(winRec.height * .15f));
+						var persist = GUILayout.Toggle(cfg.areCoordinatesPersistant.Value, cfg.areCoordinatesPersistant.Definition.Key);
+						var append = GUILayout.Toggle(cfg.addToCurrentAccessories.Value, cfg.addToCurrentAccessories.Definition.Key);
 
-						var colour1 = GUI.color;
-						var colour2 = GUI.contentColor;
-						var colour3 = GUI.backgroundColor;
+						if(persist != cfg.areCoordinatesPersistant.Value)
+							cfg.areCoordinatesPersistant.Value = persist;
+						if(append != cfg.addToCurrentAccessories.Value)
+							cfg.addToCurrentAccessories.Value = append;
+
+						colour1 = GUI.color;
+						colour2 = GUI.contentColor;
+						colour3 = GUI.backgroundColor;
 
 						GUI.color = Color.white;
 						GUI.contentColor = Color.white;
@@ -990,19 +1057,19 @@ namespace FashionLine
 
 						GUILayout.BeginHorizontal();
 						if(GUILayout.Button("Wear Selected", tmpSty))
-							if(selectedChar != 0)
-								fashCtrl.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
+							if(selectedChar > 0)
+								fashCtrl?.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
 							else
 								foreach(var fashion in lists)
 									if(selectKey != null)
-										fashion.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
+										fashion?.WearFashion(selectKey, cfg.addToCurrentAccessories.Value);
 
 						if(GUILayout.Button("Wear Defult", tmpSty))
-							if(selectedChar != 0)
-								fashCtrl.WearDefaultFashion();
+							if(selectedChar > 0)
+								fashCtrl?.WearDefaultFashion();
 							else
 								foreach(var fashion in lists)
-									fashion.WearDefaultFashion();
+									fashion?.WearDefaultFashion();
 						GUILayout.EndHorizontal();
 
 						GUILayout.BeginHorizontal();
@@ -1010,19 +1077,22 @@ namespace FashionLine
 						if(GUILayout.Button("Load Coordinate[s]", tmpSty) && lists.Any())
 						{
 							ForeGrounder.SetCurrentForground();
-							GetNewCoordinateImages(fashCtrl);
+							if(selectedChar > 0)
+								GetNewCoordinateImages(fashCtrl);
+							else
+								GetNewCoordinateImages();
 						}
-						if(GUILayout.Button("load current coordinate") && MakerAPI.InsideAndLoaded)
+
+						if(InsideAndLoaded && GUILayout.Button("load current coordinate", tmpSty) && lists.Any())
 						{
 							Hooks.OnSaveToFashionLineOnly(toFashionOnlyBtn, new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left });
-
 						}
 
 						GUILayout.EndHorizontal();
 
 						GUI.color = Color.white;
 						GUI.contentColor = Color.red;
-						GUI.backgroundColor = Color.white.RGBMultiplied(0.35f);
+						GUI.backgroundColor = new Color(1, 1, 1).RGBMultiplied(0.35f);
 
 						GUILayout.Space(5);
 						GUILayout.Label("DANGER ZONE");
@@ -1030,7 +1100,7 @@ namespace FashionLine
 
 						GUILayout.BeginHorizontal();
 						if(GUILayout.Button("Remove selected"))
-							if(selectedChar != 0)
+							if(selectedChar > 0)
 								fashCtrl.RemoveFashion(selectKey);
 							else
 								foreach(var fashion in lists)
@@ -1038,7 +1108,7 @@ namespace FashionLine
 										fashion.RemoveFashion(selectKey);
 
 						if(GUILayout.Button("Remove All"))
-							if(selectedChar != 0)
+							if(selectedChar > 0)
 								foreach(var all in fashCtrl.fashionData.Values.ToList())
 									fashCtrl.RemoveFashion(all);
 							else
@@ -1057,12 +1127,20 @@ namespace FashionLine
 					}
 					catch(Exception e)
 					{
-						FashionLine_Core.Logger.LogError(e);
+						Logger.LogError(e);
 					}
 
 					GUILayout.EndVertical();
 
-				});
+				}
+
+				Logger.LogInfo("Adding custom UI loop");
+
+				//Immediate GUI update loop
+				customUI.RemoveListener(act);
+				customUI.AddListener(act);
+				#endregion
+
 			}
 		}
 
@@ -1082,8 +1160,9 @@ namespace FashionLine
 			toFashionOnlyBtn = null;
 			costTxt = null;
 			enableStudioUI = false;
-			customUI.RemoveAllListeners();
 			winRec = cfg.studioWinRec.Value;
+			//customUI?.RemoveAllListeners();
+			//customUI = new UnityEvent();
 
 			if(isPersistantHndl != null)
 				cfg.areCoordinatesPersistant.SettingChanged -= isPersistantHndl;
@@ -1094,10 +1173,10 @@ namespace FashionLine
 
 		static void AddFashionLineMenu_Maker(RegisterCustomControlsEvent e)
 		{
-			Cleanup();
+			//Cleanup();
 
 			var inst = FashionLine_Core.Instance;
-			var fashCtrl = MakerAPI.GetCharacterControl().GetComponent<FashionLine_Controller>();
+			var fashCtrl = GetCharacterControl().GetComponent<FashionLine_Controller>();
 
 			#region Init
 #if KOI_API
@@ -1162,7 +1241,7 @@ namespace FashionLine
 					txt.fontMaterial.shaderKeywords =
 					txt.fontMaterial.shaderKeywords?.AddItem("OUTLINE_ON").ToArray();
 
-					//FashionLine_Core.Logger
+					//Logger
 					//.LogDebug($"Material keywords:\n[{string.Join(",\n", txt.fontMaterial.shaderKeywords)}]");
 
 					//	txt.material = txt.fontMaterial;
@@ -1359,7 +1438,7 @@ namespace FashionLine
 				.AddToCustomGUILayout(newVertLine: false)
 				.OnClick.AddListener(() =>
 				{
-					fashCtrl.WearDefaultFashion(reload: true);
+					fashCtrl.WearDefaultFashion(reload: false);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
@@ -1418,7 +1497,7 @@ namespace FashionLine
 
 		public static void AddCoordinate(in CoordData coord)
 		{
-			if(!MakerAPI.InsideMaker) return;
+			if(!InsideMaker) return;
 
 			var inst = FashionLine_Core.Instance;
 			inst.StartCoroutine(AddCoordinateCO(coord));
@@ -1426,7 +1505,7 @@ namespace FashionLine
 
 		public static void RemoveCoordinate(in CoordData coord)
 		{
-			if(!MakerAPI.InsideMaker) return;
+			if(!InsideMaker) return;
 
 			var inst = FashionLine_Core.Instance;
 			inst.StartCoroutine(RemoveCoordinateCO(coord));
@@ -1434,7 +1513,7 @@ namespace FashionLine
 
 		public static void RemoveAllCoordinates()
 		{
-			if(!MakerAPI.InsideMaker) return;
+			if(!InsideMaker) return;
 
 			var inst = FashionLine_Core.Instance;
 
@@ -1460,7 +1539,7 @@ namespace FashionLine
 
 
 
-			var comp = GameObject.Instantiate<GameObject>(template.ControlObject, template.ControlObject.transform.parent);
+			var comp = Instantiate(template.ControlObject, template.ControlObject.transform.parent);
 			var img = comp.GetComponentInChildren<RawImage>();
 			img.texture = coordinate.data?.LoadTexture(TextureFormat.RGBA32);
 
@@ -1544,7 +1623,7 @@ namespace FashionLine
 
 			Toggle tmp = (Toggle)coordinate.extras.FirstOrNull((obj) => obj is Toggle);
 			if(tmp)
-				GameObject.Destroy(tmp.transform.parent.gameObject);
+				Destroy(tmp.transform.parent.gameObject);
 
 			if(tmp.isOn) currentCoord = null;
 
@@ -1557,7 +1636,7 @@ namespace FashionLine
 			yield return new WaitWhile(() => gridLayout == null);
 
 			foreach(var tmp in tglGroup.ActiveToggles())
-				GameObject.Destroy(tmp.transform.parent.gameObject);
+				Destroy(tmp.transform.parent.gameObject);
 
 			currentCoord = null;
 
@@ -1580,10 +1659,33 @@ namespace FashionLine
 
 		//private static string MakeDirPath(string path) => MakeDirPath(path);
 
+		public static void GetCoordinatesInFolder(FashionLine_Controller ctrl = null)
+		{
+			var paths = OpenFileDialog.ShowDialog("Add all files in this folder (you may have to choose one)",
+			Directory.Exists(cfg.lastCoordDir.Value) ?
+			 cfg.lastCoordDir.Value : TargetDirectory,
+			"Folder",
+			"",
+			OpenFileDialog.SingleFileFlags,
+			owner: ForeGrounder.Handle);
+
+			var path = paths?.Attempt((s) => s.IsNullOrWhiteSpace() ?
+			throw new Exception() : s).LastOrNull().MakeDirPath();
+
+			cfg.lastCoordDir.Value = path?.Substring(0, path.LastIndexOf('/')) ?? TargetDirectory;
+
+			OnCoordinateFolderObtained(cfg.lastCoordDir.Value, ctrl);
+			if(paths.Any())
+				Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
+			else
+				Illusion.Game.Utils.Sound.Play(SystemSE.cancel);
+
+		}
+
 		public static void GetNewCoordinateImages(FashionLine_Controller ctrl = null)
 		{
 			//	OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT;
-			FashionLine_Core.Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
+			Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
 
 			var paths = OpenFileDialog.ShowDialog("Add New Coordinate[s] (You can select multiple)",
 			Directory.Exists(cfg.lastCoordDir.Value) ?
@@ -1598,7 +1700,7 @@ namespace FashionLine
 
 			cfg.lastCoordDir.Value = path?.Substring(0, path.LastIndexOf('/')) ?? TargetDirectory;
 
-			OnCoordinateImagesObtained(paths, ctrl);
+			OnCoordinateImagesObtained(ref paths, ctrl);
 			if(paths.Any())
 				Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 			else
@@ -1609,11 +1711,11 @@ namespace FashionLine
 		/// Called after a file is chosen in file explorer menu  
 		/// </summary>
 		/// <param name="strings: ">the info returned from file explorer. strings[0] returns the full file path</param>
-		private static void OnCoordinateImagesObtained(string[] strings, FashionLine_Controller ctrl = null)
+		private static void OnCoordinateImagesObtained(ref string[] strings, FashionLine_Controller ctrl = null)
 		{
 
 			ForeGrounder.RevertForground();
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug($"Enters accept");
+			if(cfg.debug.Value) Logger.LogDebug($"Enters accept");
 			if(strings == null || strings.Length == 0) return;
 
 			foreach(string s in strings)
@@ -1622,8 +1724,8 @@ namespace FashionLine
 
 				if(cfg.debug.Value)
 				{
-					FashionLine_Core.Logger.LogDebug($"Original path: {texPath}");
-					FashionLine_Core.Logger.LogDebug($"texture path: {Path.Combine(Path.GetDirectoryName(texPath), Path.GetFileName(texPath))}");
+					Logger.LogDebug($"Original path: {texPath}");
+					Logger.LogDebug($"texture path: {Path.Combine(Path.GetDirectoryName(texPath), Path.GetFileName(texPath))}");
 				}
 
 				if(texPath.IsNullOrWhiteSpace())
@@ -1637,7 +1739,7 @@ namespace FashionLine
 				//use file
 
 				var fashCtrls = InsideStudio ?
-					StudioAPI.GetSelectedControllers<FashionLine_Controller>() :
+					GetSelectedControllers<FashionLine_Controller>() :
 					ctrl != null ? new List<FashionLine_Controller>() { ctrl } :
 #if KKS
 					Character.GetCharaList(1).Concat(Character.GetCharaList(0)).Select(mctrl => mctrl.GetComponent<FashionLine_Controller>());
@@ -1666,13 +1768,19 @@ namespace FashionLine
 
 			}
 
-			if(cfg.debug.Value) FashionLine_Core.Logger.LogDebug($"Exit accept");
+			if(cfg.debug.Value) Logger.LogDebug($"Exit accept");
+		}
+
+		static void OnCoordinateFolderObtained(string folder, FashionLine_Controller ctrl = null)
+		{
+			var files = Directory.GetFiles(folder);
+			OnCoordinateImagesObtained(ref files, ctrl);
 		}
 
 		public static void GetNewBGUIPath()
 		{
 			//	OpenFileDialog.OpenSaveFileDialgueFlags.OFN_CREATEPROMPT;
-			FashionLine_Core.Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
+			Logger.LogInfo("Game Root Path: " + Directory.GetCurrentDirectory());
 
 			var paths = OpenFileDialog.ShowDialog("Select Background",
 			TargetDirectory.MakeDirPath("/", "\\"),
@@ -1692,7 +1800,7 @@ namespace FashionLine
 		{
 			if(path.IsNullOrWhiteSpace()) return;
 
-			cfg.bgUIImagepath.Value = path;
+			cfg.bgUIImagePath.Value = path;
 		}
 		#endregion
 

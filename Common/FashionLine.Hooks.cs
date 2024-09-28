@@ -3,11 +3,15 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+
+using ProloAPI;
+using ProloAPI.Extensions;
 
 using HarmonyLib;
 using KKAPI.Maker;
@@ -21,6 +25,7 @@ using CharaCustom;
 using ChaCustom;
 #endif
 
+using static ProloAPI.Utilities.PGeneral;
 namespace FashionLine
 {
 	public partial class FashionLine_Core
@@ -39,6 +44,34 @@ namespace FashionLine
 				//	harm.UnpatchSelf();//for pausing Hook execution 
 			}
 
+#if KOI_API
+			/// <summary>
+			/// Set default coordinate to current costume slot
+			/// </summary>
+			/// <param name="__instance"></param>
+			[HarmonyPostfix]
+			[HarmonyPatch(typeof(ChaControl), nameof(ChaControl.ChangeCoordinateType), typeof(ChaFileDefine.CoordinateType), typeof(bool))]
+			static void OnClothingTypeChange(ChaControl __instance)
+			{
+
+				if(!__instance.chaFile.status.coordinateType.InRange(0, __instance.chaFile.coordinate.Length)) return;
+
+				var ctrl = __instance.GetComponent<FashionLine_Controller>();
+				var coord = __instance.chaFile.coordinate[__instance.chaFile.status.coordinateType];
+
+				Logger.LogMessage("clothing about to be changed");
+				__instance.StartCoroutine(func());
+				IEnumerator func()
+				{
+					yield return null;
+					//save init outfit
+					ctrl.defaultCoord.LoadBytes(coord.SaveBytes(), coord.loadVersion);
+					ctrl.defaultCoord.pngData = coord?.pngData?.ToArray();//copy
+				}
+
+				Logger.LogMessage("clothing type changed");
+			}
+#endif
 			[HarmonyPrefix]
 			[HarmonyPatch(typeof(ChaFileCoordinate), nameof(ChaFileCoordinate.SaveFile))]
 			static void OnPreCoordSave(ChaFileCoordinate __instance, string __0)
