@@ -129,7 +129,7 @@ namespace FashionLine
 
 		#region Immediate GUI
 		internal static bool enableImmediateUI = false;
-		internal static Texture2D userTexUI = Texture2D.blackTexture;
+		internal static Texture2D userTexUI = ColourTex(Color.black.AlphaMultiplied(0));
 		internal static UnityEvent customUI = new UnityEvent();
 		internal static Rect winRec = new Rect(105, 390, 440, 600);
 		internal static Rect offsetRect = new Rect(new Vector2(winRec.width, 0), new Vector2(200, 200));
@@ -161,8 +161,8 @@ namespace FashionLine
 
 			GUI.color = Color.white;
 			GUI.contentColor = Color.white;
-			var bgTex = cfg.enableBGUI.Value ? userTexUI ??
-					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex) :
+			var bgTex = cfg.enableBGUI.Value ?
+					(cfg.useCreatorDefaultBG.Value ? UIGoku : userTexUI) :
 					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex);
 
 			GUI.DrawTexture(winRec = GUI.Window((GUID + "1").GetHashCode(),
@@ -239,8 +239,8 @@ namespace FashionLine
 			GUI.contentColor = Color.white;
 
 			//null coalescing is necessary (to look cool 😎)
-			var bgTex = cfg.enableBGUI.Value ? userTexUI ??
-					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex) :
+			var bgTex = cfg.enableBGUI.Value ?
+					(cfg.useCreatorDefaultBG.Value ? UIGoku : userTexUI) :
 					(cfg.useCreatorDefaultBG.Value ? UIGoku : greyTex);
 
 
@@ -923,14 +923,11 @@ namespace FashionLine
 						float bar = 15.0f;
 
 						toolPos = GUILayout.BeginScrollView(toolPos, true, false, GUI.skin.horizontalScrollbar, GUIStyle.none, GUILayout.Height(h + bar), GUILayout.ExpandWidth(true));
-						//	GUILayout.BeginHorizontal(GUILayout.ExpandHeight(false), GUILayout.ExpandWidth(true));
-
-
-
-						//tabstyle.wordWrap = true;
-
+						 
 						var selec = GUILayout.Toolbar(selectedChar, names, tabstyle, GUILayout.ExpandHeight(false), GUILayout.Width(winRec.width * 0.2f * names.Length));
 
+						GUILayout.EndScrollView();
+						
 						//tab changed
 						if(selec != selectedChar)
 						{
@@ -947,10 +944,10 @@ namespace FashionLine
 							//	Logger.LogMessage(ctrl ? "New Tab Selected" : "No Tab selected");
 
 							//Extra Code Here...
-							skipFrames = 1;
+							skipFrames = 3;
+							return;
 						}
 
-						GUILayout.EndScrollView();
 
 						#endregion
 						//Card view Window
@@ -1405,7 +1402,7 @@ namespace FashionLine
 							cfg.areCoordinatesPersistant.Value = on;
 						});
 					})
-					.tooltipMsg(cfg.areCoordinatesPersistant.Description.Description, Instance);
+					.tooltipMsg(cfg.areCoordinatesPersistant.Description.Description, Instance, () => cfg.enableTooltips.Value);
 			e.AddControl(new MakerToggle(category, "Combine Accessories", cfg.addToCurrentAccessories.Value, inst))
 					.AddToCustomGUILayout(newVertLine: true)
 					.OnGUIExists((gui) =>
@@ -1422,7 +1419,7 @@ namespace FashionLine
 							cfg.addToCurrentAccessories.Value = on;
 						});
 					})
-					.tooltipMsg(cfg.addToCurrentAccessories.Description.Description, Instance);
+					.tooltipMsg(cfg.addToCurrentAccessories.Description.Description, Instance, () => cfg.enableTooltips.Value);
 
 			e.AddControl(new MyMakerButton("Wear Selected", category, inst))
 				.AddToCustomGUILayout(newVertLine: true)

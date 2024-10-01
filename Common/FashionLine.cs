@@ -81,7 +81,7 @@ namespace FashionLine
 		public const string Description =
 			@"Adds the ability to save coordinate cards to a " +
 			@"character card and use them (Why was this not part of HS2/AI?¯\_(ツ)_/¯)";
-		public const string Version = "0.3.3.2";
+		public const string Version = "0.3.3.3";
 		#endregion
 
 		#region Dependencies
@@ -104,6 +104,7 @@ namespace FashionLine
 			public ConfigEntry<bool> enable { get; set; }
 			public ConfigEntry<bool> areCoordinatesPersistant { get; set; }
 			public ConfigEntry<bool> addToCurrentAccessories { get; set; }
+			public ConfigEntry<bool> enableTooltips { get; set; }
 			public ConfigEntry<KeyboardShortcut> prevInLine { get; set; }
 			public ConfigEntry<KeyboardShortcut> nextInLine { get; set; }
 			public ConfigEntry<KeyboardShortcut> openFloatingMenu { get; set; }
@@ -154,7 +155,7 @@ namespace FashionLine
 			string stud = "Studio";
 			string studx =
 			$"{secIndex++:d2}. " + stud;
-			
+
 			string adv = "Advanced";
 			string advx =
 			$"{secIndex2--:d2}. " + adv;
@@ -171,7 +172,10 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				addToCurrentAccessories = Config.Bind(main, "Add To Current Accessories", false,
-				new ConfigDescription("Add accessories from the costume to the character being loaded w/o removing current accessories", null,
+				new ConfigDescription("Add accessories from the costume to the current character without removing any accessories", null,
+				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
+				enableTooltips = Config.Bind(main, "Enable Tooltips", true,
+				new ConfigDescription("shows short messages about the setting like this one 😜", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				prevInLine = Config.Bind(main, "Prev. In Line", KeyboardShortcut.Empty,
@@ -185,24 +189,29 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				//Floating UI
+				enableBGUI = Config.Bind(floating, "Enable BG UI", true,
+				new ConfigDescription("Use your own background as a default 😄", null,
+				new ConfigurationManagerAttributes()
+				{
+					Order = index--,
+					Category = floatingx,
+					//	Browsable = false
+				})),
 				useCreatorDefaultBG = Config.Bind(floating, "Use Creator Default BG", true,
 				new ConfigDescription("Use the creator recommended background as a default 😄", null,
 				new ConfigurationManagerAttributes()
 				{
 					Order = index--,
 					Category = floatingx,
-					Browsable = StudioAPI.InsideStudio,
+					//	Browsable = StudioAPI.InsideStudio,
 				})),
-				enableBGUI = Config.Bind(floating, "Enable BG UI", true,
-				new ConfigDescription("Use your own background as a default 😄", null,
-				new ConfigurationManagerAttributes() { Order = index--, Category = floatingx, Browsable = false })),
 				bgUIImagePath = Config.Bind(floating, "BG UI Image Path", "",
 				new ConfigDescription("Use your own background image (will be [gray / creator defult] otherwise)", null,
 				new ConfigurationManagerAttributes()
 				{
 					Order = index--,
 					Category = floatingx,
-					Browsable = StudioAPI.InsideStudio,
+					//Browsable = StudioAPI.InsideStudio,
 				})),
 
 
@@ -351,12 +360,10 @@ namespace FashionLine
 				{
 					GUILayout.BeginHorizontal();
 
-					cfg.enableBGUI.Value = GUILayout.Toggle(cfg.enableBGUI.Value, new GUIContent()
-					{
-						text = !cfg.enableBGUI.Value ? "Disabled" : null
-					});
 
-					if(cfg.enableBGUI.Value)
+					if(!cfg.enableBGUI.Value || cfg.useCreatorDefaultBG.Value)
+						GUILayout.Label("Disabled");
+					else
 					{
 						var val = GUILayout.TextField((string)a.BoxedValue, GUILayout.Width(202));
 
@@ -369,6 +376,17 @@ namespace FashionLine
 
 					GUILayout.EndHorizontal();
 				};
+
+				cfgmngatrib = cfg.useCreatorDefaultBG.Description.Tags.OfType<ConfigurationManagerAttributes>().FirstOrDefault();
+				cfgmngatrib.CustomDrawer = (a) =>
+				{
+					if(!cfg.enableBGUI.Value)
+						GUILayout.Label("Disabled");
+					else
+						cfg.useCreatorDefaultBG.Value = GUILayout.Toggle(cfg.useCreatorDefaultBG.Value, cfg.useCreatorDefaultBG.Value ? "Enabled" : "Disabled");
+
+				};
+
 
 			}
 
