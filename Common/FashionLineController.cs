@@ -76,14 +76,15 @@ namespace FashionLine
 				new ChaFileCoordinate[] { ChaControl.chaFile.coordinate };
 #endif
 
-			//save init outfit
+			//save init outfits
 
 			foreach(var coord in coords)
 			{
 				var defaultCoord = defaultCoords.AddNReturn(new ChaFileCoordinate());
 				defaultCoord.LoadBytes(coord.SaveBytes(), coord.loadVersion);
 				defaultCoord.pngData = coord?.pngData?.ToArray();//copy
-				saveCoordDataTo(coord, defaultCoord);
+				saveCoordDataTo(coord, defaultCoord);//testing out removal
+													 //InvokeCoordWriteEvent(defaultCoord);
 			}
 
 
@@ -141,33 +142,18 @@ namespace FashionLine
 
 		void saveCoordDataTo(ChaFileCoordinate from, ChaFileCoordinate to)
 		{
-			//save mat. editor data			
-			var ctrlMEC = GetComponent<MaterialEditorCharaController>();
-			if(MatEditerDependency.IsInTargetVersionRange && ctrlMEC)
-				try
-				{
-					var id = MaterialEditorPlugin.PluginGUID;
-					var data = ExtendedSave.GetExtendedDataById(from, id);
-					ExtendedSave.SetExtendedDataById(to, id, data);
-				}
-				catch(Exception e)
-				{
-					Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
+			var fromData = ExtendedSave.GetAllExtendedData(from);
+			if(fromData == null) return;
 
-			//save overlay data
-			var ctrlKCO = GetComponent<KoiClothesOverlayController>();
-			if(KoiOverlayDependency.IsInTargetVersionRange && ctrlKCO)
-				try
-				{
-					var id = KoiClothesOverlayMgr.GUID;
-					var data = ExtendedSave.GetExtendedDataById(from, id);
-					ExtendedSave.SetExtendedDataById(to, id, data);
-				}
-				catch(Exception e)
-				{
-					Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
+			var toData = ExtendedSave.GetAllExtendedData(to);
+			if(toData == null) ExtendedSave.SetExtendedDataById(to, "some random string that no one will guess", new PluginData());
+			toData = toData ?? ExtendedSave.GetAllExtendedData(to);
+
+
+			foreach(var data in fromData)
+				toData[data.Key] = data.Value;
+
+
 		}
 
 		public void AddFashion(string name, CoordData data, bool overwrite = false)
@@ -305,13 +291,14 @@ namespace FashionLine
 						var tmp2 = coordinate.accessory.parts.ToList();
 						tmp2.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
 
-						//conbine accessories
+						//conbine accessories with existing
 						if(addAccessories)
 							coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
 
 						ChaControl.nowCoordinate.MemberInit();//reset coordinate
 						if(!ChaControl.nowCoordinate.LoadBytes(coordinate?.SaveBytes(), coordinate?.loadVersion))
 							throw new ArgumentException("Could not load specified coordinate");
+
 					}
 				}
 				else
@@ -340,7 +327,6 @@ namespace FashionLine
 
 					if(!ChaControl.nowCoordinate.LoadBytes(coordinate?.SaveBytes(), coordinate?.loadVersion))
 						throw new ArgumentException("Could not load specified coordinate");
-					//	ChaControl.ChangeCustomClothes();
 				}
 
 			}
@@ -351,37 +337,7 @@ namespace FashionLine
 			}
 
 			FashionReload(reload);
-
-			if(KoiOverlayDependency.IsInTargetVersionRange && ctrlKCO)
-				try
-				{
-					ctrlKCO.GetType().GetMethod("OnCoordinateBeingLoaded",
-						BindingFlags.Instance | BindingFlags.NonPublic,
-						types: new Type[] { typeof(ChaFileCoordinate), typeof(bool) },
-						binder: null, modifiers: null)
-						.Invoke(ctrlKCO, new object[]
-						{ coordinate, false });
-				}
-				catch(Exception e)
-				{
-					Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
-
-			if(MatEditerDependency.IsInTargetVersionRange && ctrlMEC)
-				try
-				{
-					ctrlMEC.GetType().GetMethod("OnCoordinateBeingLoaded",
-						BindingFlags.Instance | BindingFlags.NonPublic,
-						types: new Type[] { typeof(ChaFileCoordinate), typeof(bool) },
-						binder: null, modifiers: null)
-						.Invoke(ctrlMEC, new object[]
-						{ coordinate, false });
-				}
-				catch(Exception e)
-				{
-					Logger.Log(Error, $"Something went wrong: {e}\n");
-				}
-
+			ForceInvokeCoordBeingLoaded(coordinate);
 		}
 
 		public void WearDefaultFashion(bool reload = true)
@@ -449,6 +405,31 @@ namespace FashionLine
 				}
 			}
 			catch { }
+		}
+
+
+		private void ForceInvokeCoordBeingLoaded(ChaFileCoordinate coord, ChaControl control = null)
+		{
+			control = control ?? ChaControl;
+
+			var ctrlers = CharacterApi.GetBehaviours(control);
+			//save coordinate states
+			var states = ctrlers.ToDictionary((x) => x, (y) => y.ControllerRegistration.MaintainCoordinateState);
+
+			foreach(var ctrl in ctrlers)
+				ctrl.ControllerRegistration.MaintainCoordinateState = false;
+
+			typeof(CharacterApi).GetMethod("OnCoordinateBeingLoaded",
+						BindingFlags.Static | BindingFlags.NonPublic,
+						types: new Type[] { typeof(ChaControl), typeof(ChaFileCoordinate) },
+						binder: null, modifiers: null)
+						.Invoke(null, new object[]
+						{control, coord});
+
+			//restore coordinate states
+			foreach(var ctrl in ctrlers)
+				ctrl.ControllerRegistration.MaintainCoordinateState = states[ctrl];
+
 		}
 
 		#region Helper Coroutines

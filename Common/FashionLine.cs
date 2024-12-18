@@ -85,8 +85,8 @@ namespace FashionLine
 		#endregion
 
 		#region Dependencies
-		internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
-		internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
+		//internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
+		//internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
 		//internal static DependencyInfo<All_BrowserFolders> BrowserfolderDependency;
 		#endregion
 
@@ -172,14 +172,14 @@ namespace FashionLine
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				addToCurrentAccessories = Config.Bind(main, "Add To Current Accessories", false,
-				new ConfigDescription("Add accessories from the costume to the current character without removing any accessories", null,
+				new ConfigDescription("Add accessories from the selected costume to the current character without removing any accessories", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 				enableTooltips = Config.Bind(main, "Enable Tooltips", true,
 				new ConfigDescription("shows short messages about the setting like this one 😜", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 
 				prevInLine = Config.Bind(main, "Prev. In Line", KeyboardShortcut.Empty,
-				new ConfigDescription("Switch the current outfit with the previous outfit in the list", null,
+				new ConfigDescription("Switch the current outfit with the previous outfit in the list (will disable load)", null,
 				new ConfigurationManagerAttributes() { Order = index--, Category = main })),
 				nextInLine = Config.Bind(main, "Next In Line", KeyboardShortcut.Empty,
 				new ConfigDescription("Switch the current outfit with the next outfit in the list", null,
@@ -437,21 +437,21 @@ namespace FashionLine
 			ForeGrounder.SetCurrentForground();
 			//Soft dependency variables
 			{
-				KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
-				MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
+				//KoiOverlayDependency = new DependencyInfo<KoiClothesOverlayMgr>(new Version(KoiClothesOverlayMgr.Version));
+				//MatEditerDependency = new DependencyInfo<MaterialEditorPlugin>(new Version(MaterialEditorPlugin.PluginVersion));
 				//BrowserfolderDependency = new DependencyInfo<All_BrowserFolders>(new Version(All_BrowserFolders.Version));
 
-				if(!KoiOverlayDependency.IsInTargetVersionRange)
-					Logger.Log(Message | Warning, $"Some [{ModName}] functionality may be locked due to the " +
-						$"absence of [{nameof(KoiClothesOverlayMgr)}] " +
-						$"or the use of an incorrect version\n" +
-						$"{KoiOverlayDependency}");
+				//if(!KoiOverlayDependency.IsInTargetVersionRange)
+				//	Logger.Log(Message | Warning, $"Some [{ModName}] functionality may be locked due to the " +
+				//		$"absence of [{nameof(KoiClothesOverlayMgr)}] " +
+				//		$"or the use of an incorrect version\n" +
+				//		$"{KoiOverlayDependency}");
 
-				if(!MatEditerDependency.IsInTargetVersionRange)
-					Logger.Log(Message | Warning, $"Some [{ModName}] functionality may be locked due to the " +
-							$"absence of [{nameof(MaterialEditorPlugin)}] " +
-							$"or the use of an incorrect version\n" +
-							$"{MatEditerDependency}");
+				//if(!MatEditerDependency.IsInTargetVersionRange)
+				//	Logger.Log(Message | Warning, $"Some [{ModName}] functionality may be locked due to the " +
+				//			$"absence of [{nameof(MaterialEditorPlugin)}] " +
+				//			$"or the use of an incorrect version\n" +
+				//			$"{MatEditerDependency}");
 
 				//if(!BrowserfolderDependency.InTargetVersionRange)
 				//	Logger.LogWarning($"Some functionality may be locked due to the " +

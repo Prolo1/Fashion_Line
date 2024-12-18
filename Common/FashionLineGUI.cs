@@ -923,11 +923,11 @@ namespace FashionLine
 						float bar = 15.0f;
 
 						toolPos = GUILayout.BeginScrollView(toolPos, true, false, GUI.skin.horizontalScrollbar, GUIStyle.none, GUILayout.Height(h + bar), GUILayout.ExpandWidth(true));
-						 
+
 						var selec = GUILayout.Toolbar(selectedChar, names, tabstyle, GUILayout.ExpandHeight(false), GUILayout.Width(winRec.width * 0.2f * names.Length));
 
 						GUILayout.EndScrollView();
-						
+
 						//tab changed
 						if(selec != selectedChar)
 						{
@@ -1421,13 +1421,21 @@ namespace FashionLine
 					})
 					.tooltipMsg(cfg.addToCurrentAccessories.Description.Description, Instance, () => cfg.enableTooltips.Value);
 
+			var fast = e.AddControl(new MakerToggle(category, "Fast Change [experimental]", false, inst))
+			.AddToCustomGUILayout(newVertLine: true)
+			.OnGUIExists((gui) =>
+			{
+
+			})
+			.tooltipMsg("Changes cloths a lot faster than normal at the expense of not loading some costumes properly", Instance, () => cfg.enableTooltips.Value);
+
 			e.AddControl(new MyMakerButton("Wear Selected", category, inst))
 				.AddToCustomGUILayout(newVertLine: true)
 				.OnClick.AddListener(() =>
 				{
 					if(!tglGroup.AnyTogglesOn()) return;
 
-					fashCtrl.WearFashion(currentCoord, cfg.addToCurrentAccessories.Value, reload: true);
+					fashCtrl.WearFashion(currentCoord, cfg.addToCurrentAccessories.Value, reload: !fast.Value);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
@@ -1435,7 +1443,7 @@ namespace FashionLine
 				.AddToCustomGUILayout(newVertLine: false)
 				.OnClick.AddListener(() =>
 				{
-					fashCtrl.WearDefaultFashion(reload: false);
+					fashCtrl.WearDefaultFashion(reload: !fast.Value);
 					Illusion.Game.Utils.Sound.Play(SystemSE.ok_l);
 				});
 
