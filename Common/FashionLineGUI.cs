@@ -129,7 +129,7 @@ namespace FashionLine
 
 		#region Immediate GUI
 		internal static bool enableImmediateUI = false;
-		internal static Texture2D userTexUI = ColourTex(Color.black.AlphaMultiplied(0));
+		internal static Texture2D userTexUI = ColourTexture(Color.black.AlphaMultiplied(0));
 		internal static UnityEvent customUI = new UnityEvent();
 		internal static Rect winRec = new Rect(105, 390, 440, 600);
 		internal static Rect offsetRect = new Rect(new Vector2(winRec.width, 0), new Vector2(200, 200));
@@ -779,7 +779,7 @@ namespace FashionLine
 				FashionLine_Controller fashCtrl = null;
 				GUIStyle tmpSty = null;
 				GUIStyle tabstyle = null;
-				Texture2D redTex = ColourTex(Color.red);
+				Texture2D redTex = ColourTexture(Color.red);
 
 				void act()
 				{

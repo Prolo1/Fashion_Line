@@ -54,15 +54,15 @@ namespace FashionLine
 	// Tell BepInEx that we need KKAPI to run, and that we need the latest version of it.
 	// Check documentation of KoikatuAPI.VersionConst for more info.
 	BepInDependency(KoikatuAPI.GUID, KoikatuAPI.VersionConst),
-	// Tell BepInEx that we need ExtendedSave to run, and that we need the latest version of it.
-	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(ExtendedSave.GUID, ExtendedSave.Version),
-	// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
-	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency),
-	// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
-	// Check documentation of KoikatuAPI.VersionConst for more info.
-	BepInDependency(KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency),
+	//// Tell BepInEx that we need ExtendedSave to run, and that we need the latest version of it.
+	//// Check documentation of KoikatuAPI.VersionConst for more info.
+	//BepInDependency(ExtendedSave.GUID, ExtendedSave.Version),
+	//// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
+	//// Check documentation of KoikatuAPI.VersionConst for more info.
+	//BepInDependency(MaterialEditorPlugin.PluginGUID, BepInDependency.DependencyFlags.SoftDependency),
+	//// Tell BepInEx that we need Overlay to run, and that we only need it if it's there.
+	//// Check documentation of KoikatuAPI.VersionConst for more info.
+	//BepInDependency(KoiClothesOverlayMgr.GUID, BepInDependency.DependencyFlags.SoftDependency),
 	//// Tell BepInEx that we need MaterialEditor to run, and that we only need it if it's there.
 	//// Check documentation of KoikatuAPI.VersionConst for more info.
 	//BepInDependency(All_BrowserFolders.Guid, BepInDependency.DependencyFlags.SoftDependency),
@@ -84,7 +84,7 @@ namespace FashionLine
 		public const string Version = "0.3.3.3";
 		#endregion
 
-		#region Dependencies
+		#region Dependencies(None)
 		//internal static DependencyInfo<KoiClothesOverlayMgr> KoiOverlayDependency;
 		//internal static DependencyInfo<MaterialEditorPlugin> MatEditerDependency;
 		//internal static DependencyInfo<All_BrowserFolders> BrowserfolderDependency;

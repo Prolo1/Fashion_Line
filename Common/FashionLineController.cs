@@ -295,7 +295,9 @@ namespace FashionLine
 						if(addAccessories)
 							coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
 
+						ChaControl.nowCoordinate.accessory.parts = new ChaFileAccessory.PartsInfo[0];
 						ChaControl.nowCoordinate.MemberInit();//reset coordinate
+
 						if(!ChaControl.nowCoordinate.LoadBytes(coordinate?.SaveBytes(), coordinate?.loadVersion))
 							throw new ArgumentException("Could not load specified coordinate");
 
@@ -323,6 +325,7 @@ namespace FashionLine
 					if(addAccessories)
 						coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
 
+					ChaControl.nowCoordinate.accessory.parts = new ChaFileAccessory.PartsInfo[0];
 					ChaControl.nowCoordinate.MemberInit();//reset coordinate
 
 					if(!ChaControl.nowCoordinate.LoadBytes(coordinate?.SaveBytes(), coordinate?.loadVersion))
@@ -337,7 +340,7 @@ namespace FashionLine
 			}
 
 			FashionReload(reload);
-			ForceInvokeCoordBeingLoaded(coordinate);
+			this.ForceInvokeCoordBeingLoaded(coordinate);
 		}
 
 		public void WearDefaultFashion(bool reload = true)
@@ -362,7 +365,7 @@ namespace FashionLine
 
 		private void FashionReload(bool reload = true)
 		{
-			if(!reload) return;
+
 
 			try
 			{
@@ -373,12 +376,12 @@ namespace FashionLine
 #if HONEY_API
 				Singleton<Character>.Instance.customLoadGCClear = false;
 #endif
-
-				ChaControl.Reload(false, true, true, true
+				if(reload)
+					ChaControl.Reload(false, true, true, true
 #if HONEY_API
-						, true
+							, true
 #endif
-				);
+					);
 #if HONEY_API
 				Singleton<Character>.Instance.customLoadGCClear = true;
 #endif
@@ -400,37 +403,16 @@ namespace FashionLine
 #if HONEY_API
 					mkBase.ChangeAcsSlotName(-1);
 					mkBase.forceUpdateAcsList = true;
+#elif KOI_API
+					mkBase.updateCvsAccessoryChange =
+					mkBase.updateCvsAccessoryCopy = true; 
 #endif
 					mkBase.updateCustomUI = true;
 				}
 			}
-			catch { }
+			catch(Exception e) { Logger.LogError($"Reload did not complete:\n{e}"); }
 		}
 
-
-		private void ForceInvokeCoordBeingLoaded(ChaFileCoordinate coord, ChaControl control = null)
-		{
-			control = control ?? ChaControl;
-
-			var ctrlers = CharacterApi.GetBehaviours(control);
-			//save coordinate states
-			var states = ctrlers.ToDictionary((x) => x, (y) => y.ControllerRegistration.MaintainCoordinateState);
-
-			foreach(var ctrl in ctrlers)
-				ctrl.ControllerRegistration.MaintainCoordinateState = false;
-
-			typeof(CharacterApi).GetMethod("OnCoordinateBeingLoaded",
-						BindingFlags.Static | BindingFlags.NonPublic,
-						types: new Type[] { typeof(ChaControl), typeof(ChaFileCoordinate) },
-						binder: null, modifiers: null)
-						.Invoke(null, new object[]
-						{control, coord});
-
-			//restore coordinate states
-			foreach(var ctrl in ctrlers)
-				ctrl.ControllerRegistration.MaintainCoordinateState = states[ctrl];
-
-		}
 
 		#region Helper Coroutines
 		public IEnumerator AddFashionCo(uint delay, string name, CoordData data)
