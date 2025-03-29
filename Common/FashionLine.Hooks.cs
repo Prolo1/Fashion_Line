@@ -28,21 +28,21 @@ using ChaCustom;
 using static ProloAPI.Utilities.PGeneral;
 namespace FashionLine
 {
-	public partial class FashionLine_Core
-	{
-		public static string LastCoordSaveLocation { get; private set; }
-			= FashionLine_GUI.DefaultCoordDirectory;
-		public static ChaFileCoordinate LastCoord { get; private set; }
-			= null;
+    public partial class FashionLine_Core
+    {
+        public static string LastCoordSaveLocation { get; private set; }
+            = FashionLine_GUI.DefaultCoordDirectory;
+        public static ChaFileCoordinate LastCoord { get; private set; }
+            = null;
 
-		public static class Hooks
-		{
-			public static void Init()
-			{
-				var harm = Harmony.CreateAndPatchAll(typeof(Hooks), GUID);
+        public static class Hooks
+        {
+            public static void Init()
+            {
+                var harm = Harmony.CreateAndPatchAll(typeof(Hooks), GUID);
 
-				//	harm.UnpatchSelf();//for pausing Hook execution 
-			}
+                //	harm.UnpatchSelf();//for pausing Hook execution 
+            }
 
 #if KOI_API
 			///// <summary>
@@ -72,240 +72,243 @@ namespace FashionLine
 			//	Logger.LogMessage("clothing type changed");
 			//}
 #endif
-			[HarmonyPrefix]
-			[HarmonyPatch(typeof(ChaFileCoordinate), nameof(ChaFileCoordinate.SaveFile))]
-			static void OnPreCoordSave(ChaFileCoordinate __instance, string __0)
-			{
-				SetLastSaveLocation(__0);
-				SetLastCoord(__instance);
-			}
+            [HarmonyPrefix]
+            [HarmonyPatch(typeof(ChaFileCoordinate), nameof(ChaFileCoordinate.SaveFile))]
+            static void OnPreCoordSave(ChaFileCoordinate __instance, string __0)
+            {
+                SetLastCoord(__instance);
+            }
 
-			public static bool iscoordsavefinished = true;
-			[HarmonyPostfix]
-			[HarmonyPatch(typeof(ChaFileCoordinate), nameof(ChaFileCoordinate.SaveFile))]
-			static void OnPostCoordSave() => iscoordsavefinished = true;
+            public static bool iscoordsavefinished = true;
+            [HarmonyPostfix]
+            [HarmonyPatch(typeof(ChaFileCoordinate), nameof(ChaFileCoordinate.SaveFile))]
+            static void OnPostCoordSave(string __0)
+            {
+                SetLastSaveLocation(__0);
+                iscoordsavefinished = true;
+            }
 
-			static void SetLastSaveLocation(string path) =>
-				LastCoordSaveLocation = path ?? LastCoordSaveLocation;
+            static void SetLastSaveLocation(string path) =>
+                LastCoordSaveLocation = path ?? LastCoordSaveLocation;
 
-			static void SetLastCoord(ChaFileCoordinate inst) =>
-				LastCoord = inst ?? LastCoord;
+            static void SetLastCoord(ChaFileCoordinate inst) =>
+                LastCoord = inst ?? LastCoord;
 
-			[HarmonyPostfix]
-			[HarmonyPatch(typeof(Button), nameof(Button.OnPointerClick))]
-			static void OnPreButtonClick(Button __instance, PointerEventData __0)
-			{
-				if(!__instance.interactable) return;
-				OnCreateNSaveToFashionLine(__instance, __0);
-				OnSaveToFashionLineOnly(__instance, __0);
+            [HarmonyPostfix]
+            [HarmonyPatch(typeof(Button), nameof(Button.OnPointerClick))]
+            static void OnPostButtonClick(Button __instance, PointerEventData __0)
+            {
+                if(!__instance.interactable) return;
+                OnCreateNSaveToFashionLine(__instance, __0);
+                OnSaveToFashionLineOnly(__instance, __0);
 
-			}
+            }
 
-			public static void OnCreateNSaveToFashionLine(Button btn, PointerEventData data)
-			{
-				if(!MakerAPI.InsideMaker) return;
-				if(data.button != PointerEventData.InputButton.Left) return;
-
-#if HONEY_API
-				if(btn == null) return;
-				if(btn != FashionLine_GUI.coordToFashionBtn) return;
-				var orig = FashionLine_GUI.clothesSave.clothesLoadWin.button[1];
-				//btn.onClick.ActuallyRemoveAllListeners();
-
-				bool flag = false;
-				Coroutine tmp1CO = null;
-				//Coroutine tmp2CO = null;
-
-				void btnFunc()
-				{
-					//	Logger.LogInfo("clicked button");
-
-					UnityAction save = () =>
-					{
-						iscoordsavefinished = false;
-						IEnumerator func()
-						{
-							FileStream stream = null;
-							CoordData coordData = null;
-
-							//	Logger.LogInfo("Waiting on coord save");
-							while(!iscoordsavefinished) yield return null;
-							//	Logger.LogInfo("Coord save complete");
-
-							try
-							{
-								stream = new FileStream(LastCoordSaveLocation, FileMode.Open, FileAccess.Read);
-								coordData = new CoordData()
-								{
-									data = stream.ReadAllBytes(),
-									name = LastCoord.coordinateName
-								};
-
-								stream.Close();
-								//	stream.Dispose();
-							}
-							catch(Exception ex)
-							{
-								stream?.Close();
-								//stream?.Dispose();
-
-								Logger.LogError(ex);
-							}
-
-							if(coordData != null)
-								yield return Instance.StartCoroutine(MakerAPI.GetCharacterControl()
-									.GetComponent<FashionLine_Controller>()
-									.AddFashionCo(0, LastCoord.coordinateName, coordData));
-
-							//Logger.LogInfo("ran new listener");
-							flag = true;
-
-							yield break;
-						}
-
-						tmp1CO = Instance.StartCoroutine(func());
-					};
-
-					UnityAction cancel = () =>
-					{
-
-						flag = true;
-						//	Logger.LogInfo("ran new listener back");
-					};
-
-					IEnumerator Killme()
-					{
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnEntry?.onClick.AddListener(save);
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnBack?.onClick.AddListener(cancel);
-
-						while(!flag) yield return null;
-
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnEntry?.onClick.RemoveListener(save);
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnBack?.onClick.RemoveListener(cancel);
-
-						//	Instance.StopCoroutine(tmp1CO);
-
-						//Logger.LogInfo("removed added listener");
-
-						yield break;
-					}
-
-					Instance.StartCoroutine(Killme());
-
-					orig?.onClick?.Invoke();//try running after CoRoutine
-				}
-				btnFunc();
-#endif
-			}
-
-			public static void OnSaveToFashionLineOnly(Button btn, PointerEventData data)
-			{
-				if(!MakerAPI.InsideMaker) return;
-				if(data.button != PointerEventData.InputButton.Left) return;
-
+            public static void OnCreateNSaveToFashionLine(Button btn, PointerEventData data)
+            {
+                if(!MakerAPI.InsideMaker) return;
+                if(data.button != PointerEventData.InputButton.Left) return;
 
 #if HONEY_API
-				if(btn == null) return;
-				if(btn != FashionLine_GUI.toFashionOnlyBtn) return;
-				var orig = FashionLine_GUI.clothesSave.clothesLoadWin.button[1];
-				//btn.onClick.ActuallyRemoveAllListeners();
+                if(btn == null) return;
+                if(btn != FashionLine_GUI.coordToFashionBtn) return;
+                var orig = FashionLine_GUI.clothesSave.clothesLoadWin.button[1];
+                //btn.onClick.ActuallyRemoveAllListeners();
 
-				bool flag = false;
-				Coroutine tmp1CO = null;
-				//Coroutine tmp2CO = null;
+                bool flag = false;
+                Coroutine tmp1CO = null;
+                //Coroutine tmp2CO = null;
 
-				void btnFunc()
-				{
-					//	Logger.LogInfo("clicked button");
+                void btnFunc()
+                {
+                    //	Logger.LogInfo("clicked button");
 
-					UnityAction save = () =>
-					{
-						iscoordsavefinished = false;
-						IEnumerator func()
-						{
-							FileStream stream = null;
-							CoordData coordData = null;
+                    UnityAction save = () =>
+                    {
+                        iscoordsavefinished = false;
+                        IEnumerator func()
+                        {
+                            FileStream stream = null;
+                            CoordData coordData = null;
 
-							//	Logger.LogInfo("Waiting on coord save");
-							while(!iscoordsavefinished) yield return null;
-							//	Logger.LogInfo("Coord save complete");
+                            //	Logger.LogInfo("Waiting on coord save");
+                            while(!iscoordsavefinished) yield return null;
+                            //	Logger.LogInfo("Coord save complete");
 
-							try
-							{
-								stream = new FileStream(LastCoordSaveLocation, FileMode.Open, FileAccess.Read);
-								coordData = new CoordData()
-								{
-									data = stream.ReadAllBytes(),
-									name = LastCoord.coordinateName
-								};
+                            try
+                            {
+                                stream = new FileStream(LastCoordSaveLocation, FileMode.Open, FileAccess.Read);
+                                coordData = new CoordData()
+                                {
+                                    data = stream.ReadAllBytes(),
+                                    name = LastCoord.coordinateName
+                                };
 
-								stream.Close();
+                                stream.Close();
+                                //	stream.Dispose();
+                            }
+                            catch(Exception ex)
+                            {
+                                stream?.Close();
+                                //stream?.Dispose();
 
-								File.Delete(LastCoordSaveLocation);
-								//	stream.Dispose();
-							}
-							catch(Exception ex)
-							{
-								stream?.Close();
-								//stream?.Dispose();
+                                Logger.LogError(ex);
+                            }
 
-								Logger.LogError(ex);
-							}
+                            if(coordData != null)
+                                yield return Instance.StartCoroutine(MakerAPI.GetCharacterControl()
+                                    .GetComponent<FashionLine_Controller>()
+                                    .AddFashionCo(0, LastCoord.coordinateName, coordData));
 
-							if(coordData != null)
-								yield return Instance.StartCoroutine(MakerAPI.GetCharacterControl()
-									.GetComponent<FashionLine_Controller>()
-									.AddFashionCo(0, LastCoord.coordinateName, coordData));
+                            //Logger.LogInfo("ran new listener");
+                            flag = true;
 
-							//	Logger.LogInfo("ran new listener");
-							flag = true;
+                            yield break;
+                        }
 
-							yield break;
-						}
+                        tmp1CO = Instance.StartCoroutine(func());
+                    };
 
-						tmp1CO = Instance.StartCoroutine(func());
-					};
+                    UnityAction cancel = () =>
+                    {
 
-					UnityAction cancel = () =>
-					{
+                        flag = true;
+                        //	Logger.LogInfo("ran new listener back");
+                    };
 
-						flag = true;
-						//	Logger.LogInfo("ran new listener back");
-					};
+                    IEnumerator Killme()
+                    {
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnEntry?.onClick.AddListener(save);
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnBack?.onClick.AddListener(cancel);
 
-					IEnumerator Killme()
-					{
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnEntry?.onClick.AddListener(save);
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnBack?.onClick.AddListener(cancel);
+                        while(!flag) yield return null;
 
-						while(!flag) yield return null;
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnEntry?.onClick.RemoveListener(save);
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnBack?.onClick.RemoveListener(cancel);
 
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnEntry?.onClick.RemoveListener(save);
-						FashionLine_GUI.clothesSave?.clothesNameInput?.
-							btnBack?.onClick.RemoveListener(cancel);
+                        //	Instance.StopCoroutine(tmp1CO);
 
-						//	Instance.StopCoroutine(tmp1CO);
+                        //Logger.LogInfo("removed added listener");
 
-						//	Logger.LogInfo("removed added listener");
+                        yield break;
+                    }
 
-						yield break;
-					}
+                    Instance.StartCoroutine(Killme());
 
-					Instance.StartCoroutine(Killme());
+                    orig?.onClick?.Invoke();//try running after CoRoutine
+                }
+                btnFunc();
+#endif
+            }
 
-					orig?.onClick?.Invoke();//try running after CoRoutine
-				}
-				btnFunc();
+            public static void OnSaveToFashionLineOnly(Button btn, PointerEventData data)
+            {
+                if(!MakerAPI.InsideMaker) return;
+                if(data.button != PointerEventData.InputButton.Left) return;
+
+
+#if HONEY_API
+                if(btn == null) return;
+                if(btn != FashionLine_GUI.toFashionOnlyBtn) return;
+                var orig = FashionLine_GUI.clothesSave.clothesLoadWin.button[1];
+                //btn.onClick.ActuallyRemoveAllListeners();
+
+                bool flag = false;
+                Coroutine tmp1CO = null;
+                //Coroutine tmp2CO = null;
+
+                void btnFunc()
+                {
+                    //	Logger.LogInfo("clicked button");
+
+                    UnityAction save = () =>
+                    {
+                        iscoordsavefinished = false;
+                        IEnumerator func()
+                        {
+                            FileStream stream = null;
+                            CoordData coordData = null;
+
+                            //	Logger.LogInfo("Waiting on coord save");
+                            while(!iscoordsavefinished) yield return null;
+                            //	Logger.LogInfo("Coord save complete");
+
+                            try
+                            {
+                                stream = new FileStream(LastCoordSaveLocation, FileMode.Open, FileAccess.Read);
+                                coordData = new CoordData()
+                                {
+                                    data = stream.ReadAllBytes(),
+                                    name = LastCoord.coordinateName
+                                };
+
+                                stream.Close();
+
+                                File.Delete(LastCoordSaveLocation);
+                                //	stream.Dispose();
+                            }
+                            catch(Exception ex)
+                            {
+                                stream?.Close();
+                                //stream?.Dispose();
+
+                                Logger.LogError(ex);
+                            }
+
+                            if(coordData != null)
+                                yield return Instance.StartCoroutine(MakerAPI.GetCharacterControl()
+                                    .GetComponent<FashionLine_Controller>()
+                                    .AddFashionCo(0, LastCoord.coordinateName, coordData));
+
+                            //	Logger.LogInfo("ran new listener");
+                            flag = true;
+
+                            yield break;
+                        }
+
+                        tmp1CO = Instance.StartCoroutine(func());
+                    };
+
+                    UnityAction cancel = () =>
+                    {
+
+                        flag = true;
+                        //	Logger.LogInfo("ran new listener back");
+                    };
+
+                    IEnumerator Killme()
+                    {
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnEntry?.onClick.AddListener(save);
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnBack?.onClick.AddListener(cancel);
+
+                        while(!flag) yield return null;
+
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnEntry?.onClick.RemoveListener(save);
+                        FashionLine_GUI.clothesSave?.clothesNameInput?.
+                            btnBack?.onClick.RemoveListener(cancel);
+
+                        //	Instance.StopCoroutine(tmp1CO);
+
+                        //	Logger.LogInfo("removed added listener");
+
+                        yield break;
+                    }
+
+                    Instance.StartCoroutine(Killme());
+
+                    orig?.onClick?.Invoke();//try running after CoRoutine
+                }
+                btnFunc();
 #endif
 
-			}
-		}
-	}
+            }
+        }
+    }
 }

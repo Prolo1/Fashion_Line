@@ -1067,6 +1067,7 @@ namespace FashionLine
 							else
 								foreach(var fashion in lists)
 									fashion?.WearDefaultFashion();
+
 						GUILayout.EndHorizontal();
 
 						GUILayout.BeginHorizontal();
