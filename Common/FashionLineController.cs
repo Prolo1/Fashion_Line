@@ -44,14 +44,45 @@ namespace FashionLine
     {
 
         internal Dictionary<string, CoordData> fashionData = new Dictionary<string, CoordData>();
-        public List<ChaFileCoordinate> defaultCoords { get; } = new List<ChaFileCoordinate>();
+        public Dictionary<int, CoordData> defaultCoords { get; } = new Dictionary<int, CoordData>();
         private PluginData pluginData = null;
         private CoordData current = null;
 
 
         Coroutine co = null;
+
+        int lastCoordType = -1;
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            OnCoordiniteTypeChangeEvent.AddListener(
+                (a) =>
+                {
+#if KOI_API
+
+
+
+                    if(ChaFileControl.status != a) return;
+
+
+                    lastCoordType = ChaFileControl.status.coordinateType;
+
+                    if(cfg.debug.Value)
+                        Logger.LogDebug("Something changed I swear");
+
+                    if(!defaultCoords.ContainsKey(lastCoordType))
+                        defaultCoords[lastCoordType] = new CoordData().PopulateByFile(CreateTmpCoordFile(ChaControl.nowCoordinate));
+
+#endif
+
+                });
+        }
+
         public void OnCharaReload(GameMode currentGameMode, bool keepState = false)
         {
+
             if(keepState) return;
 
             if(cfg.debug.Value)
@@ -69,61 +100,9 @@ namespace FashionLine
                 pluginData = null;
                 defaultCoords.Clear();
             }
-
-
-            IEnumerator func(int a)
-            {
-
-                for(; a > 0; --a)
-                    yield return null;
-
-                //  DummyChara<FashionLine_Controller>.Initialize = true;
-                //  DummyChara<FashionLine_Controller>.extraCharacter.chaFile.LoadCharaFile(,);//load data 
-
-                //save extended card data first
-                typeof(CharacterApi).GetMethod("OnCardBeingSaved",
-                            BindingFlags.Static | BindingFlags.NonPublic,
-                            types: new Type[] { typeof(ChaFile), },
-                            binder: null, modifiers: null)
-                            .Invoke(null, new object[]
-                            { ChaControl.chaFile});
-
-
-                var coords =
-#if KOI_API
-                ChaControl.chaFile.coordinate;
-#elif HONEY_API
-                new ChaFileCoordinate[] { ChaControl.chaFile.coordinate };
-#endif
-
-
-                //save init outfits
-                if(cfg.debug.Value)
-                    Logger.LogInfo($"Saving default coordinates: {coords.Length}");
-
-                foreach(var coord in coords)
-                {
-                    if(cfg.debug.Value)
-                        Logger.LogInfo($"Entered forloop");
-
-                    var defaultCoord = defaultCoords.AddNReturn(new ChaFileCoordinate());
-                    defaultCoord.LoadBytes(coord.SaveBytes(), coord.loadVersion);
-                    defaultCoord.pngData = coord?.pngData?.ToArray();//copy
-
-                    if(cfg.debug.Value)
-                        Logger.LogInfo($"saving coord data");
-
-                    saveCoordExtDataTo(coord, defaultCoord);//testing out removal
-                                                            //InvokeCoordWriteEvent(defaultCoord);
-                }
-
-            }
-
-            StartCoroutine(func(11));
+             
             //load new data
             pluginData = this.LoadExtData<CurrentSaveLoadManager, FashionLine_Controller>();
-
-
 
             //profit
         }
@@ -286,6 +265,7 @@ namespace FashionLine
                 Logger.LogDebug("Wear fashion called");
 
             var coordinate = new ChaFileCoordinate();
+            ChaFileAccessory.PartsInfo[] accParts = null;
             var ctrlKCO = GetComponent<KoiClothesOverlayController>();
             var ctrlMEC = GetComponent<MaterialEditorCharaController>();
 
@@ -325,10 +305,8 @@ namespace FashionLine
                         throw new NullReferenceException("Coordinate does not exist");
 
 
-                    //if(!coordinate.LoadBytes(tmp?.SaveBytes(), tmp?.loadVersion))
-                    //    Logger.LogMessage($"Could not read Coordinate [{tmp?.coordinateName ?? "Null"}]");
-                    coordinate = tmp;
-                    //saveCoordExtDataTo(tmp, coordinate);
+                    if(!coordinate.LoadFile(CreateTmpCoordFile(tmp)))
+                        throw new ArgumentException("Could not load specified coordinate");
 
                     //remove excess
                     var tmp1 = ChaControl.nowCoordinate.accessory.parts.ToList();
@@ -340,17 +318,15 @@ namespace FashionLine
                     if(addAccessories)
                         coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
 
+
                 }
 
-                ChaControl.nowCoordinate.accessory.parts = new ChaFileAccessory.PartsInfo[0];
-                ChaControl.nowCoordinate.MemberInit();//reset coordinate
+                // ChaControl.nowCoordinate.accessory.parts = new ChaFileAccessory.PartsInfo[0];
+                // ChaControl.nowCoordinate.MemberInit();//reset coordinate
 
-                if(isFile)
-                    ChaControl.nowCoordinate = coordinate;
-                else
-                    //CreateTmpCoordFile(coordinate);
-                    if(!ChaControl.nowCoordinate.LoadFile(CreateTmpCoordFile(coordinate)))
-                    throw new ArgumentException("Could not load specified coordinate");
+                //  if(isFile)
+                ChaControl.nowCoordinate = coordinate;
+                // else
 
                 FashionReload(reload: reload);
 
@@ -375,15 +351,15 @@ namespace FashionLine
             var coord =
 #if KOI_API
              (int)ChaControl.chaFile.status.coordinateType;
-#elif HONEY_API
+#else
                 0;
 #endif
 
 
 
-            costume.extras.AddNReturn(defaultCoords[coord]);
 
-            WearFashion(costume, cfg.addToCurrentAccessories.Value, isFile: false, reload: reload);
+
+            WearFashion(defaultCoords[coord], cfg.addToCurrentAccessories.Value, isFile: true, reload: reload);
         }
 
         private void FashionReload(bool reload = true, bool clothsOnly = false)
@@ -440,7 +416,7 @@ namespace FashionLine
         {
             string tmpLocation = $"{(Directory.GetCurrentDirectory() + "/userdata/Tmp/FLine.png").MakeDirPath("/", "\\")}";
 
-
+            //saveCoordExtDataTo(data, data);
             //data.pngData = UIGoku.EncodeToPNG();
             data?.SaveFile(Path.GetFileName(tmpLocation)
 #if HONEY_API
@@ -516,6 +492,8 @@ namespace FashionLine
         }
 
         #endregion
+
+
     }
 
     public class CoordData
@@ -567,6 +545,30 @@ namespace FashionLine
             extras.AddRange(tmp.extras);
 
             return true;
+        }
+
+
+        public CoordData PopulateByFile(string path, bool clear = true)
+        {
+            path = path.MakeDirPath();
+
+            var coord = new ChaFileCoordinate();
+            coord.LoadFile(path);
+            var name = Path.GetFileName(path);
+            name = name.Substring(0, name.LastIndexOf('.'));
+            name = !coord.coordinateName.IsNullOrWhiteSpace() ?
+                coord.coordinateName ?? name : name;
+
+
+            this.data = File.ReadAllBytes(path);
+            this.name = name;
+            this.created = File.GetCreationTime(path);
+            this.updated = File.GetLastWriteTime(path);
+
+            if(clear)
+                extras.Clear();
+
+            return this;
         }
     }
 }

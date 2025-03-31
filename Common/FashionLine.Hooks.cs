@@ -34,6 +34,10 @@ namespace FashionLine
             = FashionLine_GUI.DefaultCoordDirectory;
         public static ChaFileCoordinate LastCoord { get; private set; }
             = null;
+        public static ChaFileStatusEv OnCoordiniteTypeChangeEvent { get; }
+            = new ChaFileStatusEv();
+
+        public class ChaFileStatusEv : UnityEvent<ChaFileStatus> { }
 
         public static class Hooks
         {
@@ -45,32 +49,26 @@ namespace FashionLine
             }
 
 #if KOI_API
-			///// <summary>
-			///// Set default coordinate to current costume slot
-			///// </summary>
-			///// <param name="__instance"></param>
-			//[HarmonyPostfix]
-			//[HarmonyPatch(typeof(ChaControl), nameof(ChaControl.ChangeCoordinateType), typeof(ChaFileDefine.CoordinateType), typeof(bool))]
-			//static void OnClothingTypeChange(ChaControl __instance)
-			//{
-			//
-			//	if(!__instance.chaFile.status.coordinateType.InRange(0, __instance.chaFile.coordinate.Length)) return;
-			//
-			//	var ctrl = __instance.GetComponent<FashionLine_Controller>();
-			//	var coord = __instance.chaFile.coordinate[__instance.chaFile.status.coordinateType];
-			//
-			//	Logger.LogMessage("clothing about to be changed");
-			//	__instance.StartCoroutine(func());
-			//	IEnumerator func()
-			//	{
-			//		yield return null;
-			//		//save init outfit
-			//		ctrl.defaultCoord.LoadBytes(coord.SaveBytes(), coord.loadVersion);
-			//		ctrl.defaultCoord.pngData = coord?.pngData?.ToArray();//copy
-			//	}
-			//
-			//	Logger.LogMessage("clothing type changed");
-			//}
+            /// <summary>
+            /// This is a Postfix hook for whenever a coordinate is changed
+            /// </summary>
+            /// <param name="__instance"></param>
+            [HarmonyPostfix]
+            [HarmonyWrapSafe]
+            [HarmonyPatch(typeof(ChaFileStatus), "set_coordinateType")]
+            static void OnCoordinateChanged(ChaFileStatus __instance)
+            {
+                IEnumerator func()
+                {
+                    for(int i = 0; i < 10; ++i)
+                        yield return null;
+
+                    OnCoordiniteTypeChangeEvent.Invoke(__instance);
+                    Logger.LogInfo("Coordinate Type Changed!!");
+                }
+
+                Instance.StartCoroutine(func()); //delayed invoke
+            }
 #endif
             [HarmonyPrefix]
             [HarmonyPatch(typeof(ChaFileCoordinate), nameof(ChaFileCoordinate.SaveFile))]
