@@ -49,16 +49,16 @@
       <HintPath>..\packages\IllusionLibs.KoikatsuSunshine.Assembly-CSharp-firstpass.2021.9.17\lib\net46\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="BepInEx, Version=5.4.20.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\IllusionLibs.BepInEx.5.4.20\lib\net35\BepInEx.dll</HintPath>
+    <Reference Include="BepInEx, Version=5.4.22.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\IllusionLibs.BepInEx.5.4.22\lib\net35\BepInEx.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Cinemachine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\IllusionLibs.KoikatsuSunshine.Cinemachine.2019.4.9\lib\net46\Cinemachine.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KKSAPI, Version=1.35.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\IllusionModdingAPI.KKSAPI.1.35.0\lib\net46\KKSAPI.dll</HintPath>
+    <Reference Include="KKSAPI, Version=1.42.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\IllusionModdingAPI.KKSAPI.1.42.0\lib\net46\KKSAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KKS_BrowserFolders">
@@ -66,15 +66,15 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KKS_ExtensibleSaveFormat, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\ExtensibleSaveFormat.KoikatsuSunshine.19.1.0\lib\net46\KKS_ExtensibleSaveFormat.dll</HintPath>
+      <HintPath>..\packages\ExtensibleSaveFormat.KoikatsuSunshine.20.1.0\lib\net46\KKS_ExtensibleSaveFormat.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KKS_MaterialEditor">
       <HintPath>..\Misc. Plugins\KKS\BepInEx\plugins\KKS_Plugins\KKS_MaterialEditor.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KKS_OverlayMods, Version=6.1.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\OverlayMods.KoikatsuSunshine.6.1.2\lib\net46\KKS_OverlayMods.dll</HintPath>
+    <Reference Include="KKS_OverlayMods, Version=6.3.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OverlayMods.KoikatsuSunshine.6.3.0\lib\net46\KKS_OverlayMods.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="MonoMod.RuntimeDetour, Version=22.1.29.1, Culture=neutral, processorArchitecture=MSIL">
@@ -176,6 +176,9 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="..\packages\Microsoft.Unity.Analyzers.1.18.0\analyzers\dotnet\cs\Microsoft.Unity.Analyzers.dll" />
+  </ItemGroup>
   <Import Project="..\Common\Common.projitems" Label="Shared" />
   <Import Project="..\ProloAPI\ProloAPI.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
@@ -216,7 +219,8 @@
   <Import Project="..\packages\IllusionLibs.KoikatsuSunshine.UnityEngine.AudioModule.2019.4.9\build\IllusionLibs.KoikatsuSunshine.UnityEngine.AudioModule.targets" Condition="Exists('..\packages\IllusionLibs.KoikatsuSunshine.UnityEngine.AudioModule.2019.4.9\build\IllusionLibs.KoikatsuSunshine.UnityEngine.AudioModule.targets')" />
   <Import Project="..\packages\IllusionLibs.KoikatsuSunshine.UnityEngine.TextRenderingModule.2019.4.9\build\IllusionLibs.KoikatsuSunshine.UnityEngine.TextRenderingModule.targets" Condition="Exists('..\packages\IllusionLibs.KoikatsuSunshine.UnityEngine.TextRenderingModule.2019.4.9\build\IllusionLibs.KoikatsuSunshine.UnityEngine.TextRenderingModule.targets')" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)" "D:\Games\Illusion\[KK Sunshine]\[BetterRepack]\BepInEx\plugins\Prolo"
+    <PostBuildEvent>mkdir "D:\Games\Illusion\[KK Sunshine]\[BetterRepack]\BepInEx\plugins\Prolo"
+copy "$(TargetPath)" "D:\Games\Illusion\[KK Sunshine]\[BetterRepack]\BepInEx\plugins\Prolo"
 powershell "&amp; '$(SolutionDir)Post-Builder.ps1' '$(TargetPath)' '$(SolutionDir)zipper.bat' '$(TargetDir)..\..\..\..\[KKS]_FashionLine.zip' '$(TargetDir)..\..\..\' '$(SolutionDir)Readme.md' "
 </PostBuildEvent>
   </PropertyGroup>

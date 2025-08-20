@@ -18,7 +18,8 @@ using ExtensibleSaveFormat;
 using KK_Plugins.MaterialEditor;
 using KoiClothesOverlayX;
 using Manager;
-using ProloAPI.Utilities;
+using ProloAPI.Utilities; 
+
 
 //using BrowserFolders;
 
@@ -39,7 +40,7 @@ using static BepInEx.Logging.LogLevel;
 namespace FashionLine
 {
     using static FashionLine_Core;
-
+    using static MaterialEditorCharaController;
     public class FashionLine_Controller : CharaCustomFunctionController
     {
 
@@ -100,7 +101,7 @@ namespace FashionLine
                 pluginData = null;
                 defaultCoords.Clear();
             }
-             
+
             //load new data
             pluginData = this.LoadExtData<CurrentSaveLoadManager, FashionLine_Controller>();
 
@@ -255,24 +256,32 @@ namespace FashionLine
                 WearFashion(line[index].Value, cfg.addToCurrentAccessories.Value);
         }
 
-        public void WearFashion(in CoordData costume, bool addAccessories, bool isFile = true, bool reload = true)
+        public void WearFashion(in CoordData costume, bool combineAccessories, bool isFile = true, bool reload = true)
         {
             if(costume == null) return;
 
             current = costume;
 
+
+
             if(cfg.debug.Value)
                 Logger.LogDebug("Wear fashion called");
 
             var coordinate = new ChaFileCoordinate();
-            ChaFileAccessory.PartsInfo[] accParts = null;
-            var ctrlKCO = GetComponent<KoiClothesOverlayController>();
+            //ChaFileAccessory.PartsInfo[] accParts = null;
+            //var ctrlKCO = GetComponent<KoiClothesOverlayController>();
             var ctrlMEC = GetComponent<MaterialEditorCharaController>();
 
-            var tmpLocation = (Directory.GetCurrentDirectory() + "/UserData/Tmp/FLine.png").MakeDirPath("/", "\\");
+            //var tmpLocation = (Directory.GetCurrentDirectory() + "/UserData/Tmp/FLine.png").MakeDirPath("/", "\\");
             try
             {
 
+                //DummyChara<FashionLine_Controller>.Initialize = true;
+                //
+                //DummyChara<FashionLine_Controller>.extraCharacter.nowCoordinate = coordinate;
+                //ctrlMEC = DummyChara<FashionLine_Controller>.extraCharacter.GetComponent<MaterialEditorCharaController>();
+
+                // ctrlMEC.;
                 if(isFile)
                 {
                     using(MemoryStream stream = new MemoryStream(costume.data))
@@ -283,17 +292,6 @@ namespace FashionLine
 #endif
                         ))
                             Logger.Log(Warning | Message, $"Could not read card [{costume.name}]. Data size [{costume.data.Length}]");
-
-                        //remove excess
-                        var tmp1 = ChaControl.nowCoordinate.accessory.parts.ToList();
-                        tmp1.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
-                        var tmp2 = coordinate.accessory.parts.ToList();
-                        tmp2.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
-
-                        //conbine accessories with existing
-                        if(addAccessories)
-                            coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
-
 
                     }
                 }
@@ -308,27 +306,268 @@ namespace FashionLine
                     if(!coordinate.LoadFile(CreateTmpCoordFile(tmp)))
                         throw new ArgumentException("Could not load specified coordinate");
 
-                    //remove excess
-                    var tmp1 = ChaControl.nowCoordinate.accessory.parts.ToList();
-                    tmp1.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
-                    var tmp2 = coordinate.accessory.parts.ToList();
-                    tmp2.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
-
-                    //combine access
-                    if(addAccessories)
-                        coordinate.accessory.parts = tmp1.Concat(tmp2).ToArray();
 
 
                 }
 
+                //remove excess
+                var tmp1 = ChaControl.nowCoordinate.accessory.parts.ToList();
+                var tmp2 = coordinate.accessory.parts.ToList();
+                var last = 1 + tmp2.FindLastIndex(acc => acc.type > (int)ChaListDefine.CategoryNo.ao_none/*type is not none*/);
+                tmp2.RemoveRange(last, tmp1.Count - last);
+                // tmp1.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
+                // tmp2.RemoveAll(acc => acc.type <= (int)ChaListDefine.CategoryNo.ao_none/*none*/);
+
+                // KK_Plugins.MaterialEditor.MaterialEditorCharaController
+
+                var propLists = ctrlMEC.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                       .Where(f => f.Name.Contains("List"));
+
+                var newList = new List<object>();
+                
+                //copy over the accessories
+                foreach(var prop in propLists)
+                {
+                    var list = prop.GetValue(GetComponent<MaterialEditorCharaController>());
+                    var tmp = new List<object>();
+                    {
+#if KK
+
+                        if(list is List<ProjectorProperty>)
+                        {
+                            foreach(var item in (List<ProjectorProperty>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((ProjectorProperty)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<ProjectorProperty>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<ProjectorProperty>());
+                        }
+                        else
+#endif
+                        if(list is List<RendererProperty>)
+                        {
+                            // var newList = new List<RendererProperty>();
+                            foreach(var item in (List<RendererProperty>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((RendererProperty)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<RendererProperty>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<RendererProperty>());
+                        }
+                        else
+                        if(list is List<MaterialFloatProperty>)
+                        {
+                            // var newList = new List<MaterialFloatProperty>();
+                            foreach(var item in (List<MaterialFloatProperty>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((MaterialFloatProperty)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<MaterialFloatProperty>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<MaterialFloatProperty>());
+                        }
+                        else
+                        if(list is List<MaterialColorProperty>)
+                        {
+                            // var newList = new List<MaterialColorProperty>();
+                            foreach(var item in (List<MaterialColorProperty>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((MaterialColorProperty)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<MaterialColorProperty>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<MaterialColorProperty>());
+                        }
+                        else
+                        if(list is List<MaterialKeywordProperty>)
+                        {
+                            // var newList = new List<MaterialKeywordProperty>();
+                            foreach(var item in (List<MaterialKeywordProperty>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((MaterialKeywordProperty)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<MaterialKeywordProperty>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<MaterialKeywordProperty>());
+                        }
+                        else
+                        if(list is List<MaterialTextureProperty>)
+                        {
+                            // var newList = new List<MaterialTextureProperty>();
+                            foreach(var item in (List<MaterialTextureProperty>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((MaterialTextureProperty)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<MaterialTextureProperty>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<MaterialTextureProperty>());
+                        }
+                        else
+                        if(list is List<MaterialShader>)
+                        {
+                            //  var newList = new List<MaterialShader>();
+                            foreach(var item in (List<MaterialShader>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((MaterialShader)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<MaterialShader>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<MaterialShader>());
+                        }
+                        else
+                        if(list is List<MaterialCopy>)
+                        {
+                            //var newList = new List<MaterialCopy>();
+                            foreach(var item in (List<MaterialCopy>)list)
+                                if(item.ObjectType == ObjectType.Accessory)
+                                {
+                                    ((MaterialCopy)item).Slot += tmp1.Count;
+                                    tmp.Add(item);
+                                }
+                            newList.Add(tmp);
+                            ((List<MaterialCopy>)prop.GetValue(ctrlMEC)).AddRange(tmp.Cast<MaterialCopy>());
+                        }
+                        else
+                        {
+                            Logger.Log(Error | Message, $"List type not implemented: {list.GetType()}");
+                        }
+                    }
+
+
+                }
+                
+                Logger.LogDebug("Saving coord data to tmp file");
+                
+                if(combineAccessories)
+                    ctrlMEC.GetType().GetMethod("OnCoordinateBeingLoaded",
+                          BindingFlags.NonPublic,
+                        types: new Type[] { typeof(ChaControl), typeof(bool), },
+                        binder: null, modifiers: null)
+                        .Invoke(ctrlMEC, new object[]
+                        { coordinate, false });
+                
+                Logger.LogDebug("Finisfed Saving coord data to tmp file");
+
+                //add accessories to new coordinate
+                foreach(var prop in propLists)
+                {
+                    var list = prop.GetValue(ctrlMEC);
+#if KK
+                    if(list is List<ProjectorProperty>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<ProjectorProperty>)
+                                prop.SetValue(ctrlMEC, ((List<ProjectorProperty>)list).AddNReturnRange((List<ProjectorProperty>)item));
+                    }
+                    else
+#endif
+                    if(list is List<RendererProperty>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<RendererProperty>)
+                                prop.SetValue(ctrlMEC, ((List<RendererProperty>)list).AddNReturnRange((List<RendererProperty>)item));
+                    }
+                    else
+                    if(list is List<MaterialFloatProperty>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<MaterialFloatProperty>)
+                                prop.SetValue(ctrlMEC, ((List<MaterialFloatProperty>)list).AddNReturnRange((List<MaterialFloatProperty>)item));
+
+                    }
+                    else
+                    if(list is List<MaterialColorProperty>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<MaterialColorProperty>)
+                                prop.SetValue(ctrlMEC, ((List<MaterialColorProperty>)list).AddNReturnRange((List<MaterialColorProperty>)item));
+
+                    }
+                    else
+                    if(list is List<MaterialKeywordProperty>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<MaterialKeywordProperty>)
+                                prop.SetValue(ctrlMEC, ((List<MaterialKeywordProperty>)list).AddNReturnRange((List<MaterialKeywordProperty>)item));
+
+                    }
+                    else
+                    if(list is List<MaterialTextureProperty>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<MaterialTextureProperty>)
+                                prop.SetValue(ctrlMEC, ((List<MaterialTextureProperty>)list).AddNReturnRange((List<MaterialTextureProperty>)item));
+
+                    }
+                    else
+                    if(list is List<MaterialShader>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<MaterialShader>)
+                                prop.SetValue(ctrlMEC, ((List<MaterialShader>)list).AddNReturnRange((List<MaterialShader>)item));
+
+                    }
+                    else
+                    if(list is List<MaterialCopy>)
+                    {
+                        foreach(var item in newList)
+                            if(item is List<MaterialCopy>)
+                                prop.SetValue(ctrlMEC, ((List<MaterialCopy>)list).AddNReturnRange((List<MaterialCopy>)item));
+
+                    }
+                    else
+                    {
+                        Logger.Log(Error | Message, $"List type not implemented: {list.GetType()}");
+                    }
+                }
+
+
+
+                //combine access
+                if(combineAccessories)
+                {
+                    coordinate.accessory.parts = tmp2.Concat(tmp1).ToArray();
+                }
                 // ChaControl.nowCoordinate.accessory.parts = new ChaFileAccessory.PartsInfo[0];
                 // ChaControl.nowCoordinate.MemberInit();//reset coordinate
+
 
                 //  if(isFile)
                 ChaControl.nowCoordinate = coordinate;
                 // else
 
+
+                //save extended card data first
+                if(combineAccessories)
+                    typeof(CharacterApi).GetMethod("OnCoordinateBeingSaved",
+                        BindingFlags.Static | BindingFlags.NonPublic,
+                        types: new Type[] { typeof(ChaControl), typeof(ChaFileCoordinate), },
+                        binder: null, modifiers: null)
+                        .Invoke(null, new object[]
+                        { ChaControl, coordinate });
+
                 FashionReload(reload: reload);
+
+
+                IEnumerator func(int delay)
+                {
+                    for(int a = 0; a < delay; ++a)
+                        yield return null;
+
+                    //  saveCoordDataTo(coordinate, ChaControl.nowCoordinate);//testing out removal
+                    this.ForceInvokeCoordBeingLoaded(ChaControl.nowCoordinate);
+                }
+
+                StartCoroutine(func(0));
 
             }
             catch(Exception e)
@@ -338,8 +577,7 @@ namespace FashionLine
             }
 
 
-            //  saveCoordDataTo(coordinate, ChaControl.nowCoordinate);//testing out removal
-            this.ForceInvokeCoordBeingLoaded(ChaControl.nowCoordinate);
+
         }
 
         public void WearDefaultFashion(bool reload = true)
@@ -362,7 +600,7 @@ namespace FashionLine
             WearFashion(defaultCoords[coord], cfg.addToCurrentAccessories.Value, isFile: true, reload: reload);
         }
 
-        private void FashionReload(bool reload = true, bool clothsOnly = false)
+        private void FashionReload(bool reload = true, bool clothsOnly = true)
         {
             try
             {
@@ -376,9 +614,10 @@ namespace FashionLine
 
                 ChaControl.AssignCoordinate(
 #if KOI_API
-                (ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType
+                (ChaFileDefine.CoordinateType)ChaControl.chaFile.status.coordinateType,
                 //ChaFileDefine.CoordinateType.Plain
 #endif
+                ChaControl.nowCoordinate
                 );
 
                 if(reload)
